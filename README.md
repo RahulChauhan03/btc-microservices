@@ -1,11 +1,11 @@
-# 🚀 BTC Microservices Project
+#  BTC Microservices Project
 
 This project is a backend system built using a **microservices architecture**.
 The idea was to break down a large application into smaller, independent services that can scale and communicate with each other efficiently.
 
 ---
 
-## 🧩 Services Included
+## Services Included
 
 * **API Gateway** – Acts as the single entry point for all client requests
 * **Service Registry (Eureka)** – Helps services discover each other dynamically
@@ -19,7 +19,7 @@ The idea was to break down a large application into smaller, independent service
 
 ---
 
-## ⚙️ Tech Stack
+## Tech Stack
 
 * Java
 * Spring Boot
@@ -30,7 +30,7 @@ The idea was to break down a large application into smaller, independent service
 
 ---
 
-## 🧠 Architecture Overview
+## Architecture Overview
 
 This project follows a typical **Spring Cloud Microservices architecture**:
 
@@ -47,7 +47,7 @@ This setup makes the system:
 
 ---
 
-## ▶️ How to Run the Project
+## How to Run the Project
 
 1. Start **Config Server**
 2. Start **Service Registry (Eureka)**
@@ -58,7 +58,7 @@ Once everything is running, you can hit APIs through the Gateway.
 
 ---
 
-## 💡 Why I Built This
+## Why I Built This
 
 I wanted to get hands-on experience with:
 
@@ -70,7 +70,7 @@ This project helped me understand how large-scale backend systems are structured
 
 ---
 
-## 📌 Future Improvements
+## Future Improvements
 
 * Add authentication (JWT / OAuth2)
 * Dockerize services
@@ -79,6 +79,6 @@ This project helped me understand how large-scale backend systems are structured
 
 ---
 
-## 🙌 Final Note
+## Final Note
 
 This is a learning-focused project, but structured in a way that reflects real-world backend development practices.
