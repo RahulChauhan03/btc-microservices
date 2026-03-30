@@ -1,4 +1,19 @@
+# IntelliJ
 .idea/
+
+# Build
 target/
+
+# Logs
 *.log
+
+# OS
+.DS_Store
+
+# Ignore home/system files (important)
+.bash_history
+.gitconfig
+.lesshst
+.yo-rc.json
+.anydesk/
 
