@@ -3,6 +3,7 @@ package com.btc.userservice.controller;
 import com.btc.userservice.dto.UserRequestDto;
 import com.btc.userservice.dto.UserResponseDto;
 import com.btc.userservice.service.UserService;
+import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,7 +25,7 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    public ResponseEntity<UserResponseDto> createUser(@RequestBody UserRequestDto requestDto) {
+    public ResponseEntity<UserResponseDto> createUser(@Valid @RequestBody UserRequestDto requestDto) {
         UserResponseDto createdUser = userService.createUser(requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
     }
@@ -41,7 +42,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     public ResponseEntity<UserResponseDto> updateUser(@PathVariable Long id,
-                                                      @RequestBody UserRequestDto requestDto) {
+                                                      @Valid @RequestBody UserRequestDto requestDto) {
         return ResponseEntity.ok(userService.updateUser(id, requestDto));
     }
 
