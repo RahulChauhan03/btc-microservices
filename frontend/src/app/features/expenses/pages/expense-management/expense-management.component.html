@@ -5,8 +5,8 @@
       <strong>{{ totalExpenses() | currency: 'USD' }}</strong>
     </mat-card>
     <mat-card class="section-card metric-card">
-      <span>Trips With Expenses</span>
-      <strong>{{ trips().length }}</strong>
+      <span>Expense Records</span>
+      <strong>{{ expenses().length }}</strong>
     </mat-card>
   </section>
 
@@ -22,12 +22,8 @@
     <form [formGroup]="expenseForm" (ngSubmit)="submit()" class="page-grid">
       <div class="form-grid">
         <mat-form-field appearance="outline">
-          <mat-label>Trip</mat-label>
-          <mat-select formControlName="tripId">
-            @for (trip of trips(); track trip.id) {
-              <mat-option [value]="trip.id">{{ trip.destination }} - {{ trip.purpose }}</mat-option>
-            }
-          </mat-select>
+          <mat-label>Title</mat-label>
+          <input matInput formControlName="title" />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
@@ -54,17 +50,10 @@
         </mat-form-field>
 
         <mat-form-field appearance="outline">
-          <mat-label>Merchant</mat-label>
-          <input matInput formControlName="merchant" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
           <mat-label>Description</mat-label>
           <input matInput formControlName="description" />
         </mat-form-field>
       </div>
-
-      <mat-checkbox formControlName="reimbursable">Eligible for reimbursement</mat-checkbox>
 
       <div class="action-row">
         <button mat-flat-button type="submit">

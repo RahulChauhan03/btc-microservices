@@ -46,7 +46,7 @@
             <article>
               <div class="item-copy">
                 <strong>{{ trip.destination }}</strong>
-                <p>{{ trip.purpose }}</p>
+                <p>{{ trip.tripCode }}</p>
               </div>
               <div class="meta">
                 <span [class]="statusClass(trip.status)">{{ trip.status }}</span>
@@ -79,11 +79,11 @@
             <article>
               <div class="item-copy">
                 <strong>{{ claim.claimNumber }}</strong>
-                <p>{{ claim.totalAmount | currency: 'USD' }}</p>
+                <p>{{ claim.claimAmount | currency: 'USD' }}</p>
               </div>
               <div class="meta">
                 <span [class]="statusClass(claim.status)">{{ claim.status }}</span>
-                <span>{{ claim.submittedOn | date: 'mediumDate' }}</span>
+                <span>{{ claim.submittedAt | date: 'mediumDate' }}</span>
               </div>
             </article>
           }

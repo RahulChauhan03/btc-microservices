@@ -22,25 +22,19 @@
         </mat-form-field>
 
         <mat-form-field appearance="outline">
-          <mat-label>Department</mat-label>
-          <input matInput formControlName="department" />
+          <mat-label>Phone</mat-label>
+          <input matInput formControlName="phone" />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
-          <mat-label>Role</mat-label>
-          <mat-select formControlName="role">
-            <mat-option value="ADMIN">Admin</mat-option>
-            <mat-option value="MANAGER">Manager</mat-option>
-            <mat-option value="EMPLOYEE">Employee</mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Status</mat-label>
-          <mat-select formControlName="status">
-            <mat-option value="ACTIVE">Active</mat-option>
-            <mat-option value="INACTIVE">Inactive</mat-option>
-          </mat-select>
+          <mat-label>{{ editingUserId() ? 'New password (optional)' : 'Password' }}</mat-label>
+          <input matInput type="password" formControlName="password" />
+          @if (userForm.controls.password.touched && userForm.controls.password.hasError('required')) {
+            <mat-error>Password is required for new users.</mat-error>
+          }
+          @if (userForm.controls.password.touched && userForm.controls.password.hasError('minlength')) {
+            <mat-error>Password must be at least 8 characters.</mat-error>
+          }
         </mat-form-field>
       </div>
 
@@ -56,12 +50,9 @@
     <app-data-table
       title="User Directory"
       searchPlaceholder="Search users"
-      [rows]="filteredUsers()"
+      [rows]="users()"
       [columns]="tableColumns"
       [actions]="tableActions"
-      [filters]="roleFilters()"
-      (filterChange)="updateFilter($event)"
-      (cellSelectChange)="updateCell($event)"
     />
   </mat-card>
 </div>

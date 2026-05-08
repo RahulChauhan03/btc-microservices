@@ -11,6 +11,9 @@ public class GatewayRoutesConfig {
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
+                .route("auth-service", route -> route
+                        .path("/auth/**")
+                        .uri("lb://USER-SERVICE"))
                 .route("user-service", route -> route
                         .path("/users/**")
                         .uri("lb://USER-SERVICE"))

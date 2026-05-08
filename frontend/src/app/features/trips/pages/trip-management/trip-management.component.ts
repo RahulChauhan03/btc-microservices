@@ -47,10 +47,10 @@ export class TripManagementComponent {
   readonly trips = signal<Trip[]>([]);
   readonly editingTripId = signal<number | null>(null);
   readonly tableColumns: DataTableColumn<Trip>[] = [
+    { key: 'tripCode', header: 'Trip Code' },
     { key: 'destination', header: 'Destination' },
-    { key: 'purpose', header: 'Purpose' },
     { key: 'dates', header: 'Dates', value: (trip) => `${trip.startDate} - ${trip.endDate}` },
-    { key: 'estimatedBudget', header: 'Budget', type: 'currency' },
+    { key: 'budget', header: 'Budget', type: 'currency' },
     { key: 'status', header: 'Status', type: 'chip' },
   ];
   readonly tableActions: DataTableAction<Trip>[] = [
@@ -60,11 +60,11 @@ export class TripManagementComponent {
   ];
 
   readonly tripForm = this.fb.nonNullable.group({
+    tripCode: ['', [Validators.required, Validators.minLength(3)]],
     destination: ['', [Validators.required, Validators.minLength(3)]],
-    purpose: ['', [Validators.required, Validators.minLength(5)]],
     startDate: ['' as string | Date, [Validators.required, this.minDateValidator(() => this.today)]],
     endDate: ['' as string | Date, [Validators.required, this.minDateValidator(() => this.startDateMin())]],
-    estimatedBudget: [0, [Validators.required, Validators.min(1)]],
+    budget: [0, [Validators.required, Validators.min(1)]],
     status: ['PLANNED' as Trip['status'], Validators.required],
   });
 
@@ -87,11 +87,11 @@ export class TripManagementComponent {
 
     const formValue = this.tripForm.getRawValue();
     const payload: TripPayload = {
+      tripCode: formValue.tripCode,
       destination: formValue.destination,
-      purpose: formValue.purpose,
       startDate: this.toDateString(formValue.startDate),
       endDate: this.toDateString(formValue.endDate),
-      estimatedBudget: formValue.estimatedBudget,
+      budget: formValue.budget,
       status: formValue.status,
     };
     const onSaved = () => {
@@ -111,11 +111,11 @@ export class TripManagementComponent {
   editTrip(trip: Trip): void {
     this.editingTripId.set(trip.id);
     this.tripForm.patchValue({
+      tripCode: trip.tripCode,
       destination: trip.destination,
-      purpose: trip.purpose,
       startDate: this.toDate(trip.startDate) ?? '',
       endDate: this.toDate(trip.endDate) ?? '',
-      estimatedBudget: trip.estimatedBudget,
+      budget: trip.budget,
       status: trip.status,
     });
   }
@@ -149,11 +149,11 @@ export class TripManagementComponent {
   resetForm(): void {
     this.editingTripId.set(null);
     this.tripForm.reset({
+      tripCode: '',
       destination: '',
-      purpose: '',
       startDate: '',
       endDate: '',
-      estimatedBudget: 0,
+      budget: 0,
       status: 'PLANNED',
     });
   }

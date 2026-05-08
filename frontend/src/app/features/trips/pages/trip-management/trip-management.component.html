@@ -12,13 +12,13 @@
     <form [formGroup]="tripForm" (ngSubmit)="submit()" class="page-grid">
       <div class="form-grid">
         <mat-form-field appearance="outline">
-          <mat-label>Destination</mat-label>
-          <input matInput formControlName="destination" />
+          <mat-label>Trip code</mat-label>
+          <input matInput formControlName="tripCode" />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
-          <mat-label>Purpose</mat-label>
-          <input matInput formControlName="purpose" />
+          <mat-label>Destination</mat-label>
+          <input matInput formControlName="destination" />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
@@ -36,8 +36,8 @@
         </mat-form-field>
 
         <mat-form-field appearance="outline">
-          <mat-label>Estimated budget</mat-label>
-          <input matInput type="number" formControlName="estimatedBudget" />
+          <mat-label>Budget</mat-label>
+          <input matInput type="number" formControlName="budget" />
         </mat-form-field>
 
         <mat-form-field appearance="outline">

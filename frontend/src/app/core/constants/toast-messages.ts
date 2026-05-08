@@ -8,27 +8,25 @@ export const TOAST_MESSAGES = {
     created: 'Trip created successfully.',
     updated: 'Trip updated successfully.',
     deleted: 'Trip deleted successfully.',
-    viewed: (trip: Trip) => `${trip.destination}: ${trip.purpose} from ${trip.startDate} to ${trip.endDate}.`,
+    viewed: (trip: Trip) => `${trip.tripCode} to ${trip.destination} from ${trip.startDate} to ${trip.endDate}.`,
   },
   expenses: {
     created: 'Expense added successfully.',
     updated: 'Expense updated successfully.',
     deleted: 'Expense deleted successfully.',
-    viewed: (expense: Expense, tripName: string) =>
-      `${expense.merchant}: ${expense.amount} on ${expense.expenseDate} for ${tripName}.`,
+    viewed: (expense: Expense) => `${expense.title}: ${expense.amount} on ${expense.expenseDate}.`,
   },
   claims: {
     created: 'Claim submitted successfully.',
     updated: 'Claim updated successfully.',
     deleted: 'Claim deleted successfully.',
-    viewed: (claim: Claim, tripName: string) => `${claim.claimNumber}: ${claim.status} for ${tripName}.`,
+    viewed: (claim: Claim) => `${claim.claimNumber}: ${claim.status} for ${claim.claimAmount}.`,
   },
   users: {
     created: 'User created successfully.',
     updated: 'User updated successfully.',
     deleted: 'User deleted successfully.',
-    roleUpdated: 'User role updated successfully.',
-    viewed: (user: User) => `${user.name}: ${user.role} in ${user.department}.`,
+    viewed: (user: User) => `${user.name}: ${user.email} | ${user.phone}.`,
   },
   errors: {
     gatewayUnavailable: 'Unable to reach API Gateway. Please verify the backend services.',

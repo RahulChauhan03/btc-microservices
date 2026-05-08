@@ -36,6 +36,12 @@ public class User {
     @Column(nullable = false)
     private String phone;
 
+    @Column
+    private String passwordHash;
+
+    @Column
+    private String role;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -43,6 +49,9 @@ public class User {
     public void prePersist() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (role == null || role.isBlank()) {
+            role = "EMPLOYEE";
         }
     }
 }

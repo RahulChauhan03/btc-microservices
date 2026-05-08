@@ -1,19 +1,21 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
-import { delay, tap } from 'rxjs/operators';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
 
+import { environment } from '../../../environments/environment';
 import { AuthResponse, AuthUser, LoginRequest } from '../models/auth.models';
 import { ApiError, ApiSuccess, runRequest } from './api-callbacks';
 
 const TOKEN_KEY = 'btc_access_token';
 const USER_KEY = 'btc_current_user';
-const DEMO_EMAIL = 'admin@btcsystem.com';
-const DEMO_PASSWORD = 'Password@123';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly endpoint = `${environment.apiBaseUrl}/auth/login`;
 
   private readonly tokenSignal = signal<string | null>(null);
   private readonly userSignal = signal<AuthUser | null>(null);
@@ -36,30 +38,8 @@ export class AuthService {
   }
 
   private loginRequest(payload: LoginRequest, rememberMe: boolean): Observable<AuthResponse> {
-    if (payload.email !== DEMO_EMAIL || payload.password !== DEMO_PASSWORD) {
-      return throwError(() => ({
-        status: 401,
-        error: {
-          message: 'Use the demo admin credentials to sign in locally.',
-        },
-      }));
-    }
-
-    const response: AuthResponse = {
-      token: this.createMockToken(),
-      user: {
-        id: 1,
-        name: 'BTC Administrator',
-        email: DEMO_EMAIL,
-        role: 'ADMIN',
-        department: 'Operations',
-      },
-      expiresIn: 3600,
-    };
-
-    return of(response).pipe(
-      delay(250),
-      tap((mockResponse) => this.persistSession(mockResponse, rememberMe)),
+    return this.http.post<AuthResponse>(this.endpoint, payload).pipe(
+      tap((response) => this.persistSession(response, rememberMe)),
     );
   }
 
@@ -132,23 +112,4 @@ export class AuthService {
     }
   }
 
-  private createMockToken(): string {
-    const header = this.toBase64Url({ alg: 'HS256', typ: 'JWT' });
-    const payload = this.toBase64Url({
-      sub: '1',
-      name: 'BTC Administrator',
-      email: DEMO_EMAIL,
-      role: 'ADMIN',
-      department: 'Operations',
-    });
-
-    return `${header}.${payload}.mock-signature`;
-  }
-
-  private toBase64Url(value: object): string {
-    return btoa(JSON.stringify(value))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/g, '');
-  }
 }

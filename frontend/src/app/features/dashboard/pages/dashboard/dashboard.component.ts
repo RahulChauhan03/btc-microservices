@@ -7,8 +7,8 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { ClaimService } from '../../../../core/services/claim.service';
 import { ExpenseService } from '../../../../core/services/expense.service';
+import { Claim, DashboardSummary, Expense, Trip } from '../../../../core/models/domain.models';
 import { TripService } from '../../../../core/services/trip.service';
-import { DashboardSummary } from '../../../../core/models/domain.models';
 import { StatCardComponent } from '../../../../shared/components/stat-card/stat-card.component';
 
 @Component({
@@ -31,9 +31,9 @@ export class DashboardComponent {
   private readonly expenseService = inject(ExpenseService);
   private readonly claimService = inject(ClaimService);
 
-  readonly trips = signal<any[]>([]);
-  readonly expenses = signal<any[]>([]);
-  readonly claims = signal<any[]>([]);
+  readonly trips = signal<Trip[]>([]);
+  readonly expenses = signal<Expense[]>([]);
+  readonly claims = signal<Claim[]>([]);
 
   readonly summary = computed<DashboardSummary>(() => {
     const trips = this.trips();
@@ -43,7 +43,7 @@ export class DashboardComponent {
 
     return {
       activeTrips: trips.filter((trip) => ['PLANNED', 'IN_PROGRESS'].includes(trip.status)).length,
-      pendingClaims: claims.filter((claim) => ['SUBMITTED', 'UNDER_REVIEW'].includes(claim.status)).length,
+      pendingClaims: claims.filter((claim) => ['SUBMITTED', 'PENDING'].includes(claim.status)).length,
       monthlyExpenses: expenses.reduce((total, expense) => total + Number(expense.amount ?? 0), 0),
       approvalRate: claims.length ? (approvedClaims / claims.length) * 100 : 0,
     };

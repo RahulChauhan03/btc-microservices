@@ -2,7 +2,6 @@ package com.btc.userservice.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,18 +13,12 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserRequestDto {
-
-    @NotBlank(message = "Name is required")
-    private String name;
+public class AuthLoginRequestDto {
 
     @NotBlank(message = "Email is required")
     @Email(message = "Email must be valid")
     private String email;
 
-    @NotBlank(message = "Phone is required")
-    private String phone;
-
-    @Size(min = 8, message = "Password must be at least 8 characters")
+    @NotBlank(message = "Password is required")
     private String password;
 }

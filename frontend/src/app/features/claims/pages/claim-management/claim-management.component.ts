@@ -8,11 +8,10 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 
 import { TOAST_MESSAGES } from '../../../../core/constants/toast-messages';
-import { Claim, ClaimPayload, Trip } from '../../../../core/models/domain.models';
+import { Claim, ClaimPayload } from '../../../../core/models/domain.models';
 import { ClaimService } from '../../../../core/services/claim.service';
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
 import { ToastService } from '../../../../core/services/toast.service';
-import { TripService } from '../../../../core/services/trip.service';
 import {
   DataTableAction,
   DataTableColumn,
@@ -36,24 +35,22 @@ import {
 })
 export class ClaimManagementComponent {
   private readonly fb = inject(FormBuilder);
-  private readonly tripService = inject(TripService);
   private readonly claimService = inject(ClaimService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly toastService = inject(ToastService);
 
-  readonly trips = signal<Trip[]>([]);
   readonly claims = signal<Claim[]>([]);
   readonly editingClaimId = signal<number | null>(null);
   readonly pendingClaims = computed(
-    () => this.claims().filter((claim) => ['SUBMITTED', 'UNDER_REVIEW'].includes(claim.status)).length,
+    () => this.claims().filter((claim) => ['SUBMITTED', 'PENDING'].includes(claim.status)).length,
   );
   readonly tableColumns: DataTableColumn<Claim>[] = [
     { key: 'claimNumber', header: 'Claim' },
-    { key: 'trip', header: 'Trip', value: (claim) => this.resolveTripName(claim.tripId) },
-    { key: 'submittedOn', header: 'Submitted', type: 'date' },
-    { key: 'totalAmount', header: 'Amount', type: 'currency' },
+    { key: 'title', header: 'Title' },
+    { key: 'submittedAt', header: 'Submitted', type: 'date' },
+    { key: 'claimAmount', header: 'Amount', type: 'currency' },
     { key: 'status', header: 'Status', type: 'chip' },
-    { key: 'approver', header: 'Approver', value: (claim) => claim.approver || 'Pending assignment' },
+    { key: 'description', header: 'Description' },
   ];
   readonly tableActions: DataTableAction<Claim>[] = [
     { id: 'view', label: 'View', icon: 'visibility', handler: (claim) => this.viewClaim(claim) },
@@ -62,8 +59,11 @@ export class ClaimManagementComponent {
   ];
 
   readonly claimForm = this.fb.nonNullable.group({
-    tripId: [0, [Validators.required, Validators.min(1)]],
-    comment: ['', [Validators.required, Validators.minLength(10)]],
+    claimNumber: ['', [Validators.required, Validators.minLength(3)]],
+    title: ['', [Validators.required, Validators.minLength(3)]],
+    claimAmount: [0, [Validators.required, Validators.min(1)]],
+    status: ['PENDING' as Claim['status'], Validators.required],
+    description: ['', [Validators.required, Validators.minLength(5)]],
   });
 
   constructor() {
@@ -94,13 +94,16 @@ export class ClaimManagementComponent {
   editClaim(claim: Claim): void {
     this.editingClaimId.set(claim.id);
     this.claimForm.patchValue({
-      tripId: claim.tripId,
-      comment: claim.comment ?? '',
+      claimNumber: claim.claimNumber,
+      title: claim.title,
+      claimAmount: claim.claimAmount,
+      status: claim.status,
+      description: claim.description ?? '',
     });
   }
 
   viewClaim(claim: Claim): void {
-    this.toastService.info(TOAST_MESSAGES.claims.viewed(claim, this.resolveTripName(claim.tripId)));
+    this.toastService.info(TOAST_MESSAGES.claims.viewed(claim));
   }
 
   deleteClaim(claim: Claim): void {
@@ -125,20 +128,12 @@ export class ClaimManagementComponent {
       });
   }
 
-  resolveTripName(tripId: number): string {
-    return this.trips().find((trip) => trip.id === tripId)?.destination ?? `Trip #${tripId}`;
-  }
-
   resetForm(): void {
     this.editingClaimId.set(null);
-    this.claimForm.reset({ tripId: 0, comment: '' });
+    this.claimForm.reset({ claimNumber: '', title: '', claimAmount: 0, status: 'PENDING', description: '' });
   }
 
   private loadData(): void {
-    this.tripService.getTrips(
-      (trips) => this.trips.set(trips),
-      () => this.trips.set([]),
-    );
     this.claimService.getClaims(
       (claims) => this.claims.set(claims),
       () => this.claims.set([]),

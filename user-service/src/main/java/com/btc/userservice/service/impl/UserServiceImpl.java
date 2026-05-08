@@ -4,12 +4,14 @@ import com.btc.userservice.dto.UserRequestDto;
 import com.btc.userservice.dto.UserResponseDto;
 import com.btc.userservice.entity.User;
 import com.btc.userservice.exception.DuplicateResourceException;
+import com.btc.userservice.exception.InvalidRequestException;
 import com.btc.userservice.exception.UserNotFoundException;
 import com.btc.userservice.repository.UserRepository;
 import com.btc.userservice.service.UserService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -18,17 +20,23 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserResponseDto createUser(UserRequestDto requestDto) {
         if (userRepository.existsByEmail(requestDto.getEmail())) {
             throw new DuplicateResourceException("User already exists with email: " + requestDto.getEmail());
         }
+        if (requestDto.getPassword() == null || requestDto.getPassword().isBlank()) {
+            throw new InvalidRequestException("Password is required");
+        }
 
         User user = User.builder()
                 .name(requestDto.getName())
                 .email(requestDto.getEmail())
                 .phone(requestDto.getPhone())
+                .passwordHash(passwordEncoder.encode(requestDto.getPassword()))
+                .role("EMPLOYEE")
                 .build();
 
         return mapToResponse(userRepository.save(user));
@@ -60,6 +68,9 @@ public class UserServiceImpl implements UserService {
         existingUser.setName(requestDto.getName());
         existingUser.setEmail(requestDto.getEmail());
         existingUser.setPhone(requestDto.getPhone());
+        if (requestDto.getPassword() != null && !requestDto.getPassword().isBlank()) {
+            existingUser.setPasswordHash(passwordEncoder.encode(requestDto.getPassword()));
+        }
 
         return mapToResponse(userRepository.save(existingUser));
     }

@@ -1,4 +1,4 @@
-export type ClaimStatus = 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
+export type ClaimStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUBMITTED';
 export type TripStatus = 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 
 export interface DashboardSummary {
@@ -12,64 +12,68 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: 'ADMIN' | 'EMPLOYEE' | 'MANAGER';
-  department: string;
-  status: 'ACTIVE' | 'INACTIVE';
+  phone: string;
+  createdAt: string;
+}
+
+export interface UserPayload {
+  name: string;
+  email: string;
+  phone: string;
+  password?: string;
 }
 
 export interface Trip {
   id: number;
+  tripCode: string;
   destination: string;
-  purpose: string;
   startDate: string;
   endDate: string;
-  estimatedBudget: number;
+  budget: number;
   status: TripStatus;
-  travelerName?: string;
 }
 
 export interface TripPayload {
+  tripCode: string;
   destination: string;
-  purpose: string;
   startDate: string;
   endDate: string;
-  estimatedBudget: number;
+  budget: number;
   status: TripStatus;
 }
 
 export interface Expense {
   id: number;
-  tripId: number;
+  title: string;
   category: 'TRAVEL' | 'HOTEL' | 'MEAL' | 'TRANSPORT' | 'OTHER';
   amount: number;
   expenseDate: string;
-  merchant: string;
   description: string;
-  reimbursable: boolean;
+  createdAt: string;
 }
 
 export interface ExpensePayload {
-  tripId: number;
+  title: string;
   category: string;
   amount: number;
   expenseDate: string;
-  merchant: string;
   description: string;
-  reimbursable: boolean;
 }
 
 export interface Claim {
   id: number;
-  tripId: number;
   claimNumber: string;
-  totalAmount: number;
-  submittedOn: string;
+  title: string;
+  description?: string;
+  claimAmount: number;
+  submittedAt: string;
   status: ClaimStatus;
-  approver?: string;
-  comment?: string;
 }
 
 export interface ClaimPayload {
-  tripId: number;
-  comment: string;
+  claimNumber: string;
+  title: string;
+  description?: string;
+  claimAmount: number;
+  status: ClaimStatus;
 }
