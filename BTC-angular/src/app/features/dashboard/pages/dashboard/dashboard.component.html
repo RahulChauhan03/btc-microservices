@@ -1,0 +1,96 @@
+<div class="page-grid">
+  <section class="metrics-grid">
+    <app-stat-card
+      label="Active Trips"
+      [value]="summary().activeTrips"
+      icon="flight_takeoff"
+    />
+    <app-stat-card
+      label="Pending Claims"
+      [value]="summary().pendingClaims"
+      icon="pending_actions"
+    />
+    <app-stat-card
+      label="Expense Volume"
+      [value]="summary().monthlyExpenses"
+      icon="payments"
+      format="currency"
+      tone="accent"
+    />
+    <app-stat-card
+      label="Approval Rate"
+      [value]="summary().approvalRate"
+      icon="percent"
+      format="percent"
+    />
+  </section>
+
+  <section class="dashboard-grid">
+    
+    <mat-card class="section-card scroll-card">
+      <div class="card-head">
+        <div>
+          <h2>Upcoming Trips</h2>
+        </div>
+        <div class="card-actions">
+          <button mat-flat-button class="dashboard-action-button" routerLink="/trips" type="button">
+            <mat-icon>add</mat-icon>
+            <span>Create Trip</span>
+          </button>
+        </div>
+      </div>
+
+      @if (topTrips().length) {
+        <div class="dashboard-list">
+          @for (trip of topTrips(); track trip.id) {
+            <article>
+              <div class="item-copy">
+                <strong>{{ trip.destination }}</strong>
+                <p>{{ trip.purpose }}</p>
+              </div>
+              <div class="meta">
+                <span [class]="statusClass(trip.status)">{{ trip.status }}</span>
+                <span>{{ trip.startDate | date: 'mediumDate' }}</span>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="empty-state">No trips are available yet.</p>
+      }
+    </mat-card>
+
+    <mat-card class="section-card scroll-card">
+      <div class="card-head">
+        <div>
+          <h2>Recent Claims</h2>
+        </div>
+        <div class="card-actions">
+          <button mat-flat-button class="dashboard-action-button" routerLink="/claims" type="button">
+            <mat-icon>fact_check</mat-icon>
+            <span>Manage Claims</span>
+          </button>
+        </div>
+      </div>
+
+      @if (latestClaims().length) {
+        <div class="dashboard-list">
+          @for (claim of latestClaims(); track claim.id) {
+            <article>
+              <div class="item-copy">
+                <strong>{{ claim.claimNumber }}</strong>
+                <p>{{ claim.totalAmount | currency: 'USD' }}</p>
+              </div>
+              <div class="meta">
+                <span [class]="statusClass(claim.status)">{{ claim.status }}</span>
+                <span>{{ claim.submittedOn | date: 'mediumDate' }}</span>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="empty-state">No claims have been submitted yet.</p>
+      }
+    </mat-card>
+  </section>
+</div>

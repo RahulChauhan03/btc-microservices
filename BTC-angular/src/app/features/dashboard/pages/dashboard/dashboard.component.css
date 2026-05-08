@@ -1,0 +1,225 @@
+.dashboard-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  min-height: 0;
+}
+
+.highlight-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 1.5rem;
+  align-items: center;
+  background:
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 28%),
+    linear-gradient(135deg, rgba(15, 118, 110, 0.08), rgba(255, 255, 255, 0.92)) !important;
+}
+
+.highlight-kicker {
+  display: inline-flex;
+  min-height: 30px;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.1);
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.highlight-card h2 {
+  margin: 0.75rem 0 0;
+  font-size: clamp(1.6rem, 2vw, 2.2rem);
+  letter-spacing: -0.03em;
+}
+
+.highlight-card p {
+  margin: 0.8rem 0 0;
+  max-width: 38rem;
+  color: var(--muted-text);
+}
+
+.highlight-stats {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.highlight-stats div {
+  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.highlight-stats strong,
+.highlight-stats span {
+  display: block;
+}
+
+.highlight-stats strong {
+  font-size: 1.6rem;
+  letter-spacing: -0.03em;
+}
+
+.highlight-stats span {
+  color: var(--muted-text);
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.card-head h2 {
+  margin: 0;
+}
+
+.card-head p {
+  margin: 0.35rem 0 0;
+  color: var(--muted-text);
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
+.dashboard-action-button {
+  min-height: 42px;
+  white-space: nowrap;
+  padding-inline: 1rem 1.1rem;
+}
+
+.dashboard-action-button mat-icon {
+  margin-right: 0.25rem;
+  font-size: 1.15rem;
+  height: 1.15rem;
+  width: 1.15rem;
+}
+
+.dashboard-list {
+  display: grid;
+  align-content: start;
+  flex: 1;
+  gap: 1rem;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.15rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(14, 116, 144, 0.42) rgba(226, 232, 240, 0.28);
+}
+
+.dashboard-list article {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 20px;
+  background: rgba(241, 245, 249, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.dashboard-list article:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 30px rgba(15, 23, 42, 0.06);
+  border-color: rgba(14, 165, 233, 0.2);
+}
+
+.item-copy strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.item-copy p {
+  margin-top: 0.35rem;
+}
+
+.dashboard-list p,
+.meta span,
+.empty-state {
+  color: var(--muted-text);
+}
+
+.meta {
+  display: grid;
+  justify-items: end;
+  gap: 0.4rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  background: #eef2f7;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.status-planned,
+.status-submitted,
+.status-under-review {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.status-in-progress {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.status-completed,
+.status-approved {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-cancelled,
+.status-rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.status-draft {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+@media (max-width: 768px) {
+  .highlight-card {
+    grid-template-columns: 1fr;
+  }
+
+  .card-head,
+  .dashboard-list article {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .card-actions {
+    width: 100%;
+  }
+
+  .card-actions .mat-mdc-unelevated-button {
+    flex: 1;
+  }
+
+  .meta {
+    justify-items: start;
+  }
+}

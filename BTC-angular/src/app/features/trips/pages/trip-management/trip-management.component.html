@@ -1,0 +1,71 @@
+<div class="page-grid">
+  <mat-card class="section-card form-card compact-form-card">
+    <div class="card-head">
+      <div>
+        <h2>{{ editingTripId() ? 'Update Trip' : 'Create Trip' }}</h2>
+      </div>
+      @if (editingTripId()) {
+        <button mat-stroked-button type="button" (click)="resetForm()">Cancel edit</button>
+      }
+    </div>
+
+    <form [formGroup]="tripForm" (ngSubmit)="submit()" class="page-grid">
+      <div class="form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Destination</mat-label>
+          <input matInput formControlName="destination" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Purpose</mat-label>
+          <input matInput formControlName="purpose" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Start date</mat-label>
+          <input matInput [matDatepicker]="startPicker" [min]="today" formControlName="startDate" />
+          <mat-datepicker-toggle matIconSuffix [for]="startPicker" />
+          <mat-datepicker #startPicker [calendarHeaderComponent]="calendarHeaderComponent" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>End date</mat-label>
+          <input matInput [matDatepicker]="endPicker" [min]="startDateMin()" formControlName="endDate" />
+          <mat-datepicker-toggle matIconSuffix [for]="endPicker" />
+          <mat-datepicker #endPicker [calendarHeaderComponent]="calendarHeaderComponent" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Estimated budget</mat-label>
+          <input matInput type="number" formControlName="estimatedBudget" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Status</mat-label>
+          <mat-select formControlName="status">
+            <mat-option value="PLANNED">Planned</mat-option>
+            <mat-option value="IN_PROGRESS">In Progress</mat-option>
+            <mat-option value="COMPLETED">Completed</mat-option>
+            <mat-option value="CANCELLED">Cancelled</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div class="action-row">
+        <button mat-flat-button type="submit">
+          {{ editingTripId() ? 'Save Changes' : 'Create Trip' }}
+        </button>
+      </div>
+    </form>
+  </mat-card>
+
+  <mat-card class="section-card scroll-card table-card">
+    <app-data-table
+      title="Trips"
+      searchPlaceholder="Search trips"
+      [rows]="trips()"
+      [columns]="tableColumns"
+      [actions]="tableActions"
+    />
+  </mat-card>
+</div>

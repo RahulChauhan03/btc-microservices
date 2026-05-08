@@ -1,0 +1,86 @@
+<div class="page-grid">
+  <section class="metrics-grid">
+    <mat-card class="section-card metric-card">
+      <span>Total Expenses</span>
+      <strong>{{ totalExpenses() | currency: 'USD' }}</strong>
+    </mat-card>
+    <mat-card class="section-card metric-card">
+      <span>Trips With Expenses</span>
+      <strong>{{ trips().length }}</strong>
+    </mat-card>
+  </section>
+
+  <mat-card class="section-card compact-form-card">
+    <div class="card-head">
+      <div>
+        <h2>{{ editingExpenseId() ? 'Edit Expense' : 'Add Expense' }}</h2>
+      </div>
+      @if (editingExpenseId()) {
+        <button mat-stroked-button type="button" (click)="resetForm()">Cancel edit</button>
+      }
+    </div>
+    <form [formGroup]="expenseForm" (ngSubmit)="submit()" class="page-grid">
+      <div class="form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Trip</mat-label>
+          <mat-select formControlName="tripId">
+            @for (trip of trips(); track trip.id) {
+              <mat-option [value]="trip.id">{{ trip.destination }} - {{ trip.purpose }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Category</mat-label>
+          <mat-select formControlName="category">
+            <mat-option value="TRAVEL">Travel</mat-option>
+            <mat-option value="HOTEL">Hotel</mat-option>
+            <mat-option value="MEAL">Meal</mat-option>
+            <mat-option value="TRANSPORT">Transport</mat-option>
+            <mat-option value="OTHER">Other</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Amount</mat-label>
+          <input matInput type="number" formControlName="amount" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Expense date</mat-label>
+          <input matInput [matDatepicker]="expenseDatePicker" formControlName="expenseDate" />
+          <mat-datepicker-toggle matIconSuffix [for]="expenseDatePicker" />
+          <mat-datepicker #expenseDatePicker [calendarHeaderComponent]="calendarHeaderComponent" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Merchant</mat-label>
+          <input matInput formControlName="merchant" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Description</mat-label>
+          <input matInput formControlName="description" />
+        </mat-form-field>
+      </div>
+
+      <mat-checkbox formControlName="reimbursable">Eligible for reimbursement</mat-checkbox>
+
+      <div class="action-row">
+        <button mat-flat-button type="submit">
+          {{ editingExpenseId() ? 'Update Expense' : 'Save Expense' }}
+        </button>
+      </div>
+    </form>
+  </mat-card>
+
+  <mat-card class="section-card scroll-card table-card">
+    <app-data-table
+      title="Expenses"
+      searchPlaceholder="Search expenses"
+      [rows]="expenses()"
+      [columns]="tableColumns"
+      [actions]="tableActions"
+    />
+  </mat-card>
+</div>

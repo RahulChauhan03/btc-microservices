@@ -1,0 +1,98 @@
+:host {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.actions-column {
+  width: 56px;
+  text-align: center;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  background: #eef2f7;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.status-planned,
+.status-submitted,
+.status-under-review {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.status-in-progress,
+.status-manager {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.status-completed,
+.status-approved,
+.status-active,
+.status-admin {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-cancelled,
+.status-rejected,
+.status-inactive {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.status-draft,
+.status-employee {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.cell-select {
+  display: inline-block;
+  transform: translateY(5px);
+  width: 130px;
+  vertical-align: middle;
+  --mat-form-field-container-height: 36px;
+  --mat-form-field-container-vertical-padding: 6px;
+}
+
+.cell-select .mat-mdc-text-field-wrapper {
+  height: 36px;
+  min-height: 36px;
+  padding: 0 0.55rem;
+}
+
+.cell-select .mat-mdc-form-field-infix {
+  width: auto;
+  min-height: 36px;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+.cell-select .mat-mdc-select-trigger {
+  height: 24px;
+}
+
+.cell-select .mat-mdc-select-value {
+  line-height: 24px;
+}
+
+.cell-select .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+.select-cell {
+  text-align: center;
+  vertical-align: middle;
+}

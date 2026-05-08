@@ -1,0 +1,15 @@
+<div class="datepicker-header">
+  <div class="period-actions">
+    <button mat-button type="button" (click)="openMonthView()">{{ monthLabel }}</button>
+    <button mat-button type="button" (click)="openYearView()">{{ yearLabel }}</button>
+  </div>
+
+  <div class="nav-actions">
+    <button mat-icon-button type="button" aria-label="Previous calendar page" (click)="previous()">
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    <button mat-icon-button type="button" aria-label="Next calendar page" (click)="next()">
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+  </div>
+</div>

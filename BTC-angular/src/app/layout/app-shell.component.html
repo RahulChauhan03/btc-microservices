@@ -1,0 +1,71 @@
+<mat-sidenav-container class="shell-container">
+  <mat-sidenav
+    [mode]="isMobile() ? 'over' : 'side'"
+    [opened]="sidebarOpen()"
+    class="sidebar"
+    (closedStart)="sidebarOpen.set(false)"
+  >
+    <div class="sidebar-content">
+      <div class="brand-wrap">
+        <div class="brand">
+          <div class="brand-mark">BT</div>
+          <div>
+            <strong>Claims System</strong>
+            <span>Business Travel Platform</span>
+          </div>
+        </div>
+
+      </div>
+
+      <mat-nav-list class="nav-list">
+        @for (item of navItems; track item.route) {
+          @if (!item.adminOnly || user()?.role === 'ADMIN') {
+            <a
+              mat-list-item
+              class="nav-link"
+              [routerLink]="item.route"
+              routerLinkActive="active-link"
+              (click)="closeOnMobile()"
+            >
+              <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+              <span matListItemTitle class="label">{{ item.label }}</span>
+            </a>
+          }
+        }
+      </mat-nav-list>
+
+      <div class="sidebar-footer">
+        <span class="footer-label">Signed in as</span>
+        <strong>{{ user()?.name }}</strong>
+        <small>{{ user()?.role }}</small>
+        <button mat-button class="logout-button" type="button" (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Logout</span>
+        </button>
+      </div>
+    </div>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar class="toolbar">
+      <button mat-icon-button type="button" (click)="toggleSidebar()" aria-label="Toggle sidebar">
+        <mat-icon>{{ sidebarOpen() ? 'menu_open' : 'menu' }}</mat-icon>
+      </button>
+
+      @if (!isMobile() && !sidebarOpen()) {
+        <div class="toolbar-copy">
+        <span class="title">Claims System</span>
+        <small>Business Travel Platform </small>
+      </div>
+      }
+
+      
+
+      <span class="toolbar-spacer"></span>
+    </mat-toolbar>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

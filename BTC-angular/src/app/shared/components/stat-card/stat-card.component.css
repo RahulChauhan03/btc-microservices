@@ -1,0 +1,116 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 0.45rem;
+  width: 100%;
+  min-height: 76px;
+  border-radius: 24px;
+  box-shadow: 0 18px 35px rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 0.75rem 0.95rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.88));
+}
+
+.stat-card.accent {
+  background: linear-gradient(135deg, #0f766e, #0f3d68 58%, #1d4ed8);
+  color: #f8fafc;
+}
+
+.stat-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -18px -36px auto;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: rgba(14, 165, 233, 0.08);
+}
+
+.icon-wrap {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.12), rgba(14, 165, 233, 0.14));
+}
+
+.icon-wrap mat-icon {
+  font-size: 1.1rem;
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.accent .icon-wrap {
+  background: rgba(248, 250, 252, 0.18);
+}
+
+.stat-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 0.2rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  text-align: center;
+}
+
+.stat-value {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+p {
+  flex: 0 1 auto;
+  margin: 0;
+  color: inherit;
+  opacity: 0.82;
+  font-size: 0.98rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+h2 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .stat-card {
+    min-height: 72px;
+    padding: 0.7rem 0.85rem;
+  }
+
+  .icon-wrap {
+    width: 34px;
+    height: 34px;
+  }
+
+  p,
+  h2 {
+    font-size: 0.9rem;
+  }
+}

@@ -1,0 +1,25 @@
+.datepicker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem 0.4rem;
+}
+
+.period-actions,
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.period-actions button {
+  min-width: auto;
+  padding-inline: 0.45rem;
+  color: #334155;
+  font-weight: 700;
+}
+
+.nav-actions button {
+  color: #475569;
+}

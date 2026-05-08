@@ -1,0 +1,43 @@
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.card-head p {
+  margin: 0.35rem 0 0;
+  color: var(--muted-text);
+}
+
+.metric-card {
+  padding: 1.25rem;
+}
+
+.metric-card span {
+  display: block;
+  color: var(--muted-text);
+}
+
+.metric-card strong {
+  font-size: 1.8rem;
+}
+
+.action-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.actions-column {
+  width: 56px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .card-head,
+  .action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

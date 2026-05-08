@@ -1,0 +1,56 @@
+<div class="page-grid">
+  <section class="metrics-grid">
+    <mat-card class="section-card summary-card">
+      <span>Pending Claims</span>
+      <strong>{{ pendingClaims() }}</strong>
+    </mat-card>
+    <mat-card class="section-card summary-card">
+      <span>Total Claims</span>
+      <strong>{{ claims().length }}</strong>
+    </mat-card>
+  </section>
+
+  <mat-card class="section-card compact-form-card">
+    <div class="card-head">
+      <div>
+        <h2>{{ editingClaimId() ? 'Edit Claim' : 'Submit Claim' }}</h2>
+      </div>
+      @if (editingClaimId()) {
+        <button mat-stroked-button type="button" (click)="resetForm()">Cancel edit</button>
+      }
+    </div>
+    <form [formGroup]="claimForm" (ngSubmit)="submit()" class="page-grid">
+      <div class="form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Trip</mat-label>
+          <mat-select formControlName="tripId">
+            @for (trip of trips(); track trip.id) {
+              <mat-option [value]="trip.id">{{ trip.destination }} - {{ trip.purpose }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="comment-field">
+          <mat-label>Claim note</mat-label>
+          <textarea matInput rows="2" formControlName="comment"></textarea>
+        </mat-form-field>
+      </div>
+
+      <div class="action-row">
+        <button mat-flat-button type="submit">
+          {{ editingClaimId() ? 'Update Claim' : 'Submit Claim' }}
+        </button>
+      </div>
+    </form>
+  </mat-card>
+
+  <mat-card class="section-card scroll-card table-card">
+    <app-data-table
+      title="Claims"
+      searchPlaceholder="Search claims"
+      [rows]="claims()"
+      [columns]="tableColumns"
+      [actions]="tableActions"
+    />
+  </mat-card>
+</div>

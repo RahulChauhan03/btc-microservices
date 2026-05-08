@@ -1,0 +1,47 @@
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.card-head p {
+  margin: 0.35rem 0 0;
+  color: var(--muted-text);
+}
+
+.summary-card {
+  padding: 1.25rem;
+}
+
+.summary-card span {
+  display: block;
+  color: var(--muted-text);
+}
+
+.summary-card strong {
+  font-size: 1.8rem;
+}
+
+.comment-field {
+  grid-column: 1 / -1;
+}
+
+.action-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.actions-column {
+  width: 56px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .card-head,
+  .action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

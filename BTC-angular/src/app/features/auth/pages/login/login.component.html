@@ -1,0 +1,95 @@
+<section class="login-page">
+  <div class="login-copy">
+    <span class="eyebrow">Business Travel Operations</span>
+    <h1>Manage trips, expenses, and claims from one secure workspace.</h1>
+    <p>
+      This frontend is designed for an API Gateway backend microservices environment with JWT
+      authentication, resilient request handling, and responsive operational dashboards.
+    </p>
+
+    <div class="value-points">
+      <div>
+        <mat-icon>shield</mat-icon>
+        <span>JWT-secured access</span>
+      </div>
+      <div>
+        <mat-icon>hub</mat-icon> 
+        <span>Gateway-based integrations</span>
+      </div>
+      <div>
+        <mat-icon>task_alt</mat-icon>
+        <span>Trips to reimbursement in one flow</span>
+      </div>
+    </div>
+
+    <div class="trust-panel">
+      <div>
+        <strong>99.9%</strong>
+        <span>service uptime ready design</span>
+      </div>
+      <div>
+        <strong>5 modules</strong>
+        <span>dashboard, trips, expenses, claims, users</span>
+      </div>
+      <div>
+        <strong>Role based</strong>
+        <span>admin and employee workflows supported</span>
+      </div>
+    </div>
+  </div>
+
+  <mat-card class="login-card section-card">
+    <div class="card-top">
+      <div>
+        <span class="card-kicker">Welcome back</span>
+        <h2>Sign In</h2>
+        <p class="card-copy">Use your employee credentials to access the claims workspace.</p>
+      </div>
+      <div class="status-badge">
+        <span class="status-dot"></span>
+        Secure
+      </div>
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="submit()" class="page-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Email</mat-label>
+        <input matInput type="email" formControlName="email" />
+        @if (loginForm.controls.email.touched && loginForm.controls.email.invalid) {
+          <mat-error>Enter a valid business email address.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Password</mat-label>
+        <input
+          matInput
+          [type]="hidePassword() ? 'password' : 'text'"
+          formControlName="password"
+        />
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          (click)="hidePassword.set(!hidePassword())"
+        >
+          <mat-icon>{{ hidePassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
+        </button>
+        @if (loginForm.controls.password.touched && loginForm.controls.password.invalid) {
+          <mat-error>Password must be at least 8 characters.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-checkbox formControlName="rememberMe">Keep me signed in on this device</mat-checkbox>
+
+      <button mat-flat-button type="submit" [disabled]="submitting()">
+        {{ submitting() ? 'Signing in...' : 'Login' }}
+      </button>
+
+      <div class="demo-note">
+        <strong>Demo access</strong>
+        <span><code>admin@btcsystem.com</code> / <code>Password@123</code></span>
+      </div>
+    </form>
+  </mat-card>
+</section>

@@ -1,0 +1,67 @@
+<div class="page-grid">
+  <mat-card class="section-card compact-form-card">
+    <div class="card-head">
+      <div>
+        <h2>{{ editingUserId() ? 'Edit User' : 'Add User' }}</h2>
+      </div>
+      @if (editingUserId()) {
+        <button mat-stroked-button type="button" (click)="resetForm()">Cancel edit</button>
+      }
+    </div>
+
+    <form [formGroup]="userForm" (ngSubmit)="submit()" class="page-grid">
+      <div class="form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Name</mat-label>
+          <input matInput formControlName="name" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label>
+          <input matInput formControlName="email" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Department</mat-label>
+          <input matInput formControlName="department" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Role</mat-label>
+          <mat-select formControlName="role">
+            <mat-option value="ADMIN">Admin</mat-option>
+            <mat-option value="MANAGER">Manager</mat-option>
+            <mat-option value="EMPLOYEE">Employee</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Status</mat-label>
+          <mat-select formControlName="status">
+            <mat-option value="ACTIVE">Active</mat-option>
+            <mat-option value="INACTIVE">Inactive</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div class="action-row">
+        <button mat-flat-button type="submit">
+          {{ editingUserId() ? 'Update User' : 'Create User' }}
+        </button>
+      </div>
+    </form>
+  </mat-card>
+
+  <mat-card class="section-card scroll-card table-card">
+    <app-data-table
+      title="User Directory"
+      searchPlaceholder="Search users"
+      [rows]="filteredUsers()"
+      [columns]="tableColumns"
+      [actions]="tableActions"
+      [filters]="roleFilters()"
+      (filterChange)="updateFilter($event)"
+      (cellSelectChange)="updateCell($event)"
+    />
+  </mat-card>
+</div>
