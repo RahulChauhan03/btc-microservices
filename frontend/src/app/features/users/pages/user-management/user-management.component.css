@@ -1,13 +1,17 @@
 .card-head,
 .action-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 1rem;
 }
 
 .card-head {
+  justify-content: space-between;
   margin-bottom: 1rem;
+}
+
+.action-row {
+  justify-content: flex-end;
 }
 
 .card-head p {

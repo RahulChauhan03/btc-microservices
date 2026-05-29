@@ -5,8 +5,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TOAST_MESSAGES } from '../../../../core/constants/toast-messages';
 import { Expense, ExpensePayload } from '../../../../core/models/domain.models';
@@ -30,8 +32,10 @@ import { DatepickerHeaderComponent } from '../../../../shared/components/datepic
     MatCardModule,
     MatDatepickerModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     MatSelectModule,
+    RouterLink,
     DataTableComponent,
   ],
   templateUrl: './expense-management.component.html',
@@ -42,10 +46,13 @@ export class ExpenseManagementComponent {
   private readonly expenseService = inject(ExpenseService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly toastService = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   readonly calendarHeaderComponent = DatepickerHeaderComponent;
 
   readonly expenses = signal<Expense[]>([]);
   readonly editingExpenseId = signal<number | null>(null);
+  readonly isFormPage = signal(false);
   readonly totalExpenses = computed(() =>
     this.expenses().reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0),
   );
@@ -57,7 +64,6 @@ export class ExpenseManagementComponent {
     { key: 'description', header: 'Description' },
   ];
   readonly tableActions: DataTableAction<Expense>[] = [
-    { id: 'view', label: 'View', icon: 'visibility', handler: (expense) => this.viewExpense(expense) },
     { id: 'edit', label: 'Edit', icon: 'edit', handler: (expense) => this.editExpense(expense) },
     { id: 'delete', label: 'Delete', icon: 'delete', handler: (expense) => this.deleteExpense(expense) },
   ];
@@ -71,6 +77,12 @@ export class ExpenseManagementComponent {
   });
 
   constructor() {
+    this.route.paramMap.subscribe((params) => {
+      const id = Number(params.get('id'));
+      this.isFormPage.set(this.router.url.includes('/new') || this.router.url.includes('/edit/'));
+      this.editingExpenseId.set(Number.isFinite(id) && id > 0 ? id : null);
+      this.patchEditingExpense();
+    });
     this.loadData();
   }
 
@@ -94,6 +106,7 @@ export class ExpenseManagementComponent {
       );
       this.resetForm();
       this.loadData();
+      this.router.navigate(['/expenses']);
     };
 
     if (this.editingExpenseId()) {
@@ -105,7 +118,19 @@ export class ExpenseManagementComponent {
   }
 
   editExpense(expense: Expense): void {
-    this.editingExpenseId.set(expense.id);
+    this.router.navigate(['/expenses/edit', expense.id]);
+  }
+
+  private patchEditingExpense(): void {
+    const expense = this.expenses().find((item) => item.id === this.editingExpenseId());
+
+    if (!expense) {
+      if (this.isFormPage() && !this.editingExpenseId()) {
+        this.resetForm();
+      }
+      return;
+    }
+
     this.expenseForm.patchValue({
       title: expense.title,
       category: expense.category,
@@ -142,7 +167,6 @@ export class ExpenseManagementComponent {
   }
 
   resetForm(): void {
-    this.editingExpenseId.set(null);
     this.expenseForm.reset({
       title: '',
       category: 'TRAVEL',
@@ -154,7 +178,10 @@ export class ExpenseManagementComponent {
 
   private loadData(): void {
     this.expenseService.getExpenses(
-      (expenses) => this.expenses.set(expenses),
+      (expenses) => {
+        this.expenses.set(expenses);
+        this.patchEditingExpense();
+      },
       () => this.expenses.set([]),
     );
   }

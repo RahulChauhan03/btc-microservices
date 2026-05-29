@@ -1,5 +1,6 @@
 export type ClaimStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUBMITTED';
 export type TripStatus = 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'PROJECT_MANAGER' | 'EMPLOYEE';
 
 export interface DashboardSummary {
   activeTrips: number;
@@ -13,6 +14,7 @@ export interface User {
   name: string;
   email: string;
   phone: string;
+  role: UserRole;
   createdAt: string;
 }
 
@@ -20,6 +22,7 @@ export interface UserPayload {
   name: string;
   email: string;
   phone: string;
+  role: UserRole;
   password?: string;
 }
 

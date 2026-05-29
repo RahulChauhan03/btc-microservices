@@ -1,4 +1,16 @@
 <div class="page-grid">
+  <section class="dashboard-hero">
+    <div>
+      <span class="hero-kicker">Travel command center</span>
+      <h1>Move every trip, receipt, and claim without losing the thread.</h1>
+    </div>
+    <div class="hero-orbit" aria-hidden="true">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+  </section>
+
   <section class="metrics-grid">
     <app-stat-card
       label="Active Trips"
@@ -31,9 +43,10 @@
       <div class="card-head">
         <div>
           <h2>Upcoming Trips</h2>
+          <p>Next movement across employee travel.</p>
         </div>
         <div class="card-actions">
-          <button mat-flat-button class="dashboard-action-button" routerLink="/trips" type="button">
+          <button mat-flat-button class="dashboard-action-button" routerLink="/trips/new" type="button">
             <mat-icon>add</mat-icon>
             <span>Create Trip</span>
           </button>
@@ -64,6 +77,7 @@
       <div class="card-head">
         <div>
           <h2>Recent Claims</h2>
+          <p>Latest reimbursement signals.</p>
         </div>
         <div class="card-actions">
           <button mat-flat-button class="dashboard-action-button" routerLink="/claims" type="button">

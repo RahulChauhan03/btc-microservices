@@ -4,8 +4,10 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TOAST_MESSAGES } from '../../../../core/constants/toast-messages';
 import { Claim, ClaimPayload } from '../../../../core/models/domain.models';
@@ -26,8 +28,10 @@ import {
     MatButtonModule,
     MatCardModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     MatSelectModule,
+    RouterLink,
     DataTableComponent,
   ],
   templateUrl: './claim-management.component.html',
@@ -38,9 +42,12 @@ export class ClaimManagementComponent {
   private readonly claimService = inject(ClaimService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly toastService = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   readonly claims = signal<Claim[]>([]);
   readonly editingClaimId = signal<number | null>(null);
+  readonly isFormPage = signal(false);
   readonly pendingClaims = computed(
     () => this.claims().filter((claim) => ['SUBMITTED', 'PENDING'].includes(claim.status)).length,
   );
@@ -53,7 +60,6 @@ export class ClaimManagementComponent {
     { key: 'description', header: 'Description' },
   ];
   readonly tableActions: DataTableAction<Claim>[] = [
-    { id: 'view', label: 'View', icon: 'visibility', handler: (claim) => this.viewClaim(claim) },
     { id: 'edit', label: 'Edit', icon: 'edit', handler: (claim) => this.editClaim(claim) },
     { id: 'delete', label: 'Delete', icon: 'delete', handler: (claim) => this.deleteClaim(claim) },
   ];
@@ -67,6 +73,12 @@ export class ClaimManagementComponent {
   });
 
   constructor() {
+    this.route.paramMap.subscribe((params) => {
+      const id = Number(params.get('id'));
+      this.isFormPage.set(this.router.url.includes('/new') || this.router.url.includes('/edit/'));
+      this.editingClaimId.set(Number.isFinite(id) && id > 0 ? id : null);
+      this.patchEditingClaim();
+    });
     this.loadData();
   }
 
@@ -81,6 +93,7 @@ export class ClaimManagementComponent {
       this.toastService.success(this.editingClaimId() ? TOAST_MESSAGES.claims.updated : TOAST_MESSAGES.claims.created);
       this.resetForm();
       this.loadData();
+      this.router.navigate(['/claims']);
     };
 
     if (this.editingClaimId()) {
@@ -92,7 +105,19 @@ export class ClaimManagementComponent {
   }
 
   editClaim(claim: Claim): void {
-    this.editingClaimId.set(claim.id);
+    this.router.navigate(['/claims/edit', claim.id]);
+  }
+
+  private patchEditingClaim(): void {
+    const claim = this.claims().find((item) => item.id === this.editingClaimId());
+
+    if (!claim) {
+      if (this.isFormPage() && !this.editingClaimId()) {
+        this.resetForm();
+      }
+      return;
+    }
+
     this.claimForm.patchValue({
       claimNumber: claim.claimNumber,
       title: claim.title,
@@ -129,13 +154,15 @@ export class ClaimManagementComponent {
   }
 
   resetForm(): void {
-    this.editingClaimId.set(null);
     this.claimForm.reset({ claimNumber: '', title: '', claimAmount: 0, status: 'PENDING', description: '' });
   }
 
   private loadData(): void {
     this.claimService.getClaims(
-      (claims) => this.claims.set(claims),
+      (claims) => {
+        this.claims.set(claims);
+        this.patchEditingClaim();
+      },
       () => this.claims.set([]),
     );
   }

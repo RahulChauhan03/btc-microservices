@@ -1,29 +1,80 @@
 .shell-container {
   height: 100dvh;
-  background: transparent;
+  background:
+    linear-gradient(135deg, rgba(0, 168, 132, 0.08), transparent 26%),
+    linear-gradient(315deg, rgba(249, 115, 22, 0.08), transparent 24%);
+}
+
+.shell-container ::ng-deep .mat-drawer {
+  transition:
+    transform 190ms var(--ease-out),
+    visibility 190ms step-end !important;
+  will-change: transform;
+}
+
+.shell-container ::ng-deep .mat-drawer.mat-drawer-opened {
+  transition:
+    transform 190ms var(--ease-out),
+    visibility 0ms linear !important;
+}
+
+.shell-container ::ng-deep .mat-drawer-content {
+  transition:
+    margin-left 190ms var(--ease-out) !important;
+  will-change: margin-left, transform;
+}
+
+.sidebar-is-closed ::ng-deep .mat-drawer-content {
+  transform: none;
+}
+
+.sidebar-is-open ::ng-deep .mat-drawer-content {
+  transform: translateX(0);
 }
 
 .sidebar {
-  width: 280px;
+  width: 292px;
   height: 100dvh;
   background:
-    radial-gradient(circle at top, rgba(45, 212, 191, 0.2), transparent 38%),
-    linear-gradient(180deg, #082f49 0%, #0f172a 50%, #111827 100%);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 28%),
+    radial-gradient(circle at 16% 8%, rgba(0, 168, 132, 0.28), transparent 28%),
+    radial-gradient(circle at 96% 12%, rgba(249, 115, 22, 0.2), transparent 28%),
+    linear-gradient(180deg, #07111f 0%, #0d1828 52%, #12101f 100%);
   color: #f8fafc;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 24px 0 60px rgba(15, 23, 42, 0.12);
+  box-shadow: 26px 0 70px rgba(15, 23, 42, 0.18);
   overflow: hidden;
   border-radius: 0px;
+  transform-origin: left center;
+  transition:
+    transform 190ms var(--ease-out),
+    box-shadow 190ms var(--ease-out),
+    opacity 120ms ease !important;
+  will-change: transform;
+}
+
+.sidebar:not(.mat-drawer-opened) {
+  box-shadow: 0 0 0 rgba(15, 23, 42, 0);
+  opacity: 0.98;
 }
 
 .sidebar-content {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
+  transition:
+    opacity 120ms ease,
+    transform 190ms var(--ease-out);
+  will-change: opacity, transform;
+}
+
+.sidebar:not(.mat-drawer-opened) .sidebar-content {
+  opacity: 0.9;
+  transform: translateX(-4px);
 }
 
 .brand-wrap {
-  padding: 1.25rem 1rem 0.75rem;
+  padding: 1.25rem 1rem 0.85rem;
 }
 
 .brand {
@@ -47,21 +98,29 @@
 .brand-mark {
   width: 48px;
   height: 48px;
-  border-radius: 16px;
+  border-radius: 14px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #5eead4, #60a5fa);
-  color: #082f49;
+  background: linear-gradient(135deg, #34d399, #60a5fa 56%, #fb7185);
+  color: #06101f;
   font-weight: 700;
-  box-shadow: 0 16px 30px rgba(34, 211, 238, 0.22);
+  box-shadow: 0 16px 30px rgba(37, 99, 235, 0.25);
+  animation: logo-float 4.8s ease-in-out infinite;
+}
+
+.brand-mark mat-icon {
+  color: inherit;
 }
 
 .sidebar-summary {
   margin-top: 1rem;
-  padding: 1rem;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.08);
+  padding: 0.95rem;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05)),
+    rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .sidebar-summary p {
@@ -77,8 +136,8 @@
   min-height: 30px;
   padding: 0 0.8rem;
   border-radius: 999px;
-  background: rgba(94, 234, 212, 0.14);
-  color: #99f6e4;
+  background: rgba(52, 211, 153, 0.16);
+  color: #a7f3d0;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -91,31 +150,44 @@
 
 .nav-link {
   margin-bottom: 0.35rem;
-  border-radius: 16px;
+  border-radius: 14px;
+  color: #f8fafc !important;
   transition:
-    transform 160ms ease,
-    background-color 160ms ease,
-    border-color 160ms ease;
+    transform 180ms var(--ease-out),
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
   border: 1px solid transparent;
 }
 
 .nav-link:hover {
-  transform: translateX(4px);
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.08);
+  transform: translateX(5px);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff !important;
+}
+
+.nav-link:hover .label,
+.nav-link:hover mat-icon,
+.nav-link:focus-visible .label,
+.nav-link:focus-visible mat-icon,
+.active-link .label,
+.active-link mat-icon {
+  color: #ffffff !important;
 }
 
 .active-link {
-  background: linear-gradient(90deg, rgba(45, 212, 191, 0.18), rgba(59, 130, 246, 0.18));
-  border-radius: 16px;
-  border-color: rgba(125, 211, 252, 0.22);
+  background: linear-gradient(90deg, rgba(52, 211, 153, 0.18), rgba(96, 165, 250, 0.2), rgba(251, 113, 133, 0.1));
+  border-radius: 14px;
+  border-color: rgba(125, 211, 252, 0.28);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
 }
 
 .sidebar-footer {
   margin: auto 1rem 1rem;
   padding: 1rem;
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.36);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -123,6 +195,28 @@
 .sidebar-footer small,
 .footer-label {
   display: block;
+}
+
+.profile-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.profile-avatar,
+.toolbar-user div {
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #34d399, #60a5fa);
+  color: #06101f;
+  font-weight: 800;
+}
+
+.profile-avatar {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
 }
 
 .footer-label,
@@ -157,25 +251,32 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  min-height: 72px;
-  padding-inline: 0.75rem;
-  backdrop-filter: blur(18px);
-  background: rgba(248, 250, 252, 0.72);
+  min-height: 74px;
+  padding-inline: 0.85rem 1.1rem;
+  backdrop-filter: blur(22px) saturate(1.2);
+  background: rgba(248, 250, 252, 0.7);
   border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.menu-toggle {
+  transition:
+    transform 220ms var(--ease-out),
+    background-color 180ms ease;
+}
+
+.menu-toggle:hover {
+  background: rgba(37, 99, 235, 0.08);
+  transform: translateY(-1px);
+}
+
+.sidebar-is-closed .menu-toggle {
+  animation: menu-nudge 190ms var(--ease-out);
 }
 
 .toolbar-copy {
   display: flex;
   flex-direction: column;
   margin-left: 0.5rem;
-}
-
-.menu-state-text {
-  margin-left: 0.35rem;
-  color: var(--muted-text);
-  font-size: 0.92rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
 }
 
 .toolbar-copy small {
@@ -186,13 +287,51 @@
   flex: 1;
 }
 
+.toolbar-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: 0.75rem;
+  padding: 0 0.78rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 168, 132, 0.18);
+  background: rgba(255, 255, 255, 0.68);
+  color: #0f766e;
+  font-size: 0.84rem;
+  font-weight: 750;
+  height: 34px;
+}
+
+.pulse-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.48);
+  animation: pulse 1.8s ease-out infinite;
+}
+
+.toolbar-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--muted-text);
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.toolbar-user div {
+  width: 36px;
+  height: 36px;
+}
+
 .title {
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .content {
-  height: calc(100dvh - 72px);
+  height: calc(100dvh - 74px);
   min-height: 0;
   overflow: hidden;
   padding: 1.75rem;
@@ -211,7 +350,8 @@
     display: none;
   }
 
-  .menu-state-text {
+  .toolbar-live span:last-child,
+  .toolbar-user span {
     display: none;
   }
 }
@@ -219,4 +359,39 @@
 .label {
   color: white;
   font-weight: 500;
+}
+
+@keyframes pulse {
+  70% {
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes logo-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-3px) rotate(2deg);
+  }
+}
+
+@keyframes menu-nudge {
+  0% {
+    transform: translateX(0);
+  }
+
+  45% {
+    transform: translateX(-3px);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
 }

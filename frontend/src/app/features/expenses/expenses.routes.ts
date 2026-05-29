@@ -8,4 +8,18 @@ export const EXPENSES_ROUTES: Routes = [
         (m) => m.ExpenseManagementComponent,
       ),
   },
+  {
+    path: 'new',
+    loadComponent: () =>
+      import('./pages/expense-management/expense-management.component').then(
+        (m) => m.ExpenseManagementComponent,
+      ),
+  },
+  {
+    path: 'edit/:id',
+    loadComponent: () =>
+      import('./pages/expense-management/expense-management.component').then(
+        (m) => m.ExpenseManagementComponent,
+      ),
+  },
 ];

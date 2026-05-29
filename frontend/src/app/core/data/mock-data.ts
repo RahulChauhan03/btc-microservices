@@ -6,6 +6,7 @@ export const MOCK_USERS: User[] = [
     name: 'Aarav Sharma',
     email: 'aarav.sharma@btcsystem.com',
     phone: '9876543210',
+    role: 'SUPER_ADMIN',
     createdAt: '2026-04-01T09:00:00',
   },
   {
@@ -13,6 +14,7 @@ export const MOCK_USERS: User[] = [
     name: 'Priya Nair',
     email: 'priya.nair@btcsystem.com',
     phone: '9876543211',
+    role: 'ADMIN',
     createdAt: '2026-04-02T09:00:00',
   },
   {
@@ -20,6 +22,7 @@ export const MOCK_USERS: User[] = [
     name: 'Rohan Mehta',
     email: 'rohan.mehta@btcsystem.com',
     phone: '9876543212',
+    role: 'PROJECT_MANAGER',
     createdAt: '2026-04-03T09:00:00',
   },
   {
@@ -27,6 +30,7 @@ export const MOCK_USERS: User[] = [
     name: 'Neha Verma',
     email: 'neha.verma@btcsystem.com',
     phone: '9876543213',
+    role: 'EMPLOYEE',
     createdAt: '2026-04-04T09:00:00',
   },
   {
@@ -34,6 +38,7 @@ export const MOCK_USERS: User[] = [
     name: 'Karan Patel',
     email: 'karan.patel@btcsystem.com',
     phone: '9876543214',
+    role: 'EMPLOYEE',
     createdAt: '2026-04-05T09:00:00',
   },
 ];

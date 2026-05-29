@@ -1,58 +1,85 @@
 <div class="page-grid">
-  <mat-card class="section-card compact-form-card">
-    <div class="card-head">
+  @if (!isFormPage()) {
+    <div class="page-toolbar">
       <div>
-        <h2>{{ editingUserId() ? 'Edit User' : 'Add User' }}</h2>
+        <span class="page-kicker">People ops</span>
+        <h1>User Directory</h1>
       </div>
-      @if (editingUserId()) {
-        <button mat-stroked-button type="button" (click)="resetForm()">Cancel edit</button>
-      }
+      <button mat-flat-button routerLink="/users/new" type="button">
+        <mat-icon>add</mat-icon>
+        <span>Create User</span>
+      </button>
     </div>
 
-    <form [formGroup]="userForm" (ngSubmit)="submit()" class="page-grid">
-      <div class="form-grid">
-        <mat-form-field appearance="outline">
-          <mat-label>Name</mat-label>
-          <input matInput formControlName="name" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Email</mat-label>
-          <input matInput formControlName="email" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Phone</mat-label>
-          <input matInput formControlName="phone" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>{{ editingUserId() ? 'New password (optional)' : 'Password' }}</mat-label>
-          <input matInput type="password" formControlName="password" />
-          @if (userForm.controls.password.touched && userForm.controls.password.hasError('required')) {
-            <mat-error>Password is required for new users.</mat-error>
-          }
-          @if (userForm.controls.password.touched && userForm.controls.password.hasError('minlength')) {
-            <mat-error>Password must be at least 8 characters.</mat-error>
-          }
-        </mat-form-field>
-      </div>
-
-      <div class="action-row">
-        <button mat-flat-button type="submit">
-          {{ editingUserId() ? 'Update User' : 'Create User' }}
+    <mat-card class="section-card scroll-card table-card">
+      <app-data-table
+        title="User Directory"
+        searchPlaceholder="Search users"
+        [rows]="users()"
+        [columns]="tableColumns"
+        [actions]="tableActions"
+        [showTitle]="false"
+      />
+    </mat-card>
+  } @else {
+    <mat-card class="section-card form-page-card">
+      <div class="card-head">
+        <div>
+          <span class="page-kicker">User workflow</span>
+          <h2>{{ editingUserId() ? 'Edit User' : 'Add User' }}</h2>
+          <p>{{ editingUserId() ? 'Update profile details in a focused workspace.' : 'Create a user without crowding the directory table.' }}</p>
+        </div>
+        <button mat-stroked-button routerLink="/users" type="button">
+          <mat-icon>arrow_back</mat-icon>
+          <span>Back to Users</span>
         </button>
       </div>
-    </form>
-  </mat-card>
 
-  <mat-card class="section-card scroll-card table-card">
-    <app-data-table
-      title="User Directory"
-      searchPlaceholder="Search users"
-      [rows]="users()"
-      [columns]="tableColumns"
-      [actions]="tableActions"
-    />
-  </mat-card>
+      <form [formGroup]="userForm" (ngSubmit)="submit()" class="page-grid">
+        <div class="form-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Name</mat-label>
+            <input matInput formControlName="name" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Email</mat-label>
+            <input matInput formControlName="email" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Phone</mat-label>
+            <input matInput formControlName="phone" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Role</mat-label>
+            <mat-select formControlName="role">
+              @for (role of roleOptions; track role.value) {
+                <mat-option [value]="role.value">{{ role.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ editingUserId() ? 'New password (optional)' : 'Password' }}</mat-label>
+            <input matInput type="password" formControlName="password" />
+            @if (userForm.controls.password.touched && userForm.controls.password.hasError('required')) {
+              <mat-error>Password is required for new users.</mat-error>
+            }
+            @if (userForm.controls.password.touched && userForm.controls.password.hasError('minlength')) {
+              <mat-error>Password must be at least 8 characters.</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <div class="action-row">
+          <button mat-stroked-button routerLink="/users" type="button">Cancel</button>
+          <button mat-flat-button type="submit">
+            {{ editingUserId() ? 'Update User' : 'Create User' }}
+          </button>
+        </div>
+      </form>
+    </mat-card>
+  }
 </div>

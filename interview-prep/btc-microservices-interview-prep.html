@@ -1,0 +1,263 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>BTC Microservices Interview Q&A</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; color: #111; line-height: 1.32; font-size: 10.5pt; }
+    h1 { font-size: 22pt; margin: 0 0 8px; }
+    h2 { font-size: 15pt; border-bottom: 1px solid #aaa; margin-top: 22px; padding-bottom: 4px; }
+    h3 { font-size: 12pt; margin-top: 16px; }
+    .meta { color: #444; margin-bottom: 16px; }
+    .qa { margin: 6px 0 9px; }
+    .q { font-weight: bold; }
+    .a { margin-top: 2px; }
+    table { border-collapse: collapse; width: 100%; margin: 8px 0 12px; }
+    th, td { border: 1px solid #bbb; padding: 5px; vertical-align: top; }
+    th { background: #eee; }
+    code { font-family: Consolas, Monaco, monospace; }
+  </style>
+</head>
+<body>
+<h1>BTC Microservices Project Interview Q&A</h1>
+<div class="meta">Prepared for a 2.5+ years Software Developer interview. Answers are intentionally short so you can explain naturally in your own words.</div>
+
+<h2>Project Snapshot</h2>
+<table>
+  <tr><th>Area</th><th>Details</th></tr>
+  <tr><td>Architecture</td><td>Spring Cloud microservices with Angular frontend.</td></tr>
+  <tr><td>Services</td><td>Config Server, Eureka Service Registry, API Gateway, User/Auth, Trip, Expense, Claim, Payment, Notification.</td></tr>
+  <tr><td>Backend Stack</td><td>Java 17, Spring Boot 3.4.4, Spring Cloud 2024.0.1, Spring Web, JPA, Validation, Eureka, Gateway, MySQL, Lombok, OpenAPI.</td></tr>
+  <tr><td>Frontend Stack</td><td>Angular 21, TypeScript, Angular Material/CDK, RxJS, standalone lazy routes, guards, interceptors, signals.</td></tr>
+  <tr><td>Databases</td><td>Separate MySQL databases: <code>user_service_db</code>, <code>trip_service_db</code>, <code>expense_service_db</code>, <code>claim_service_db</code>.</td></tr>
+  <tr><td>Main Flow</td><td>Angular calls API Gateway on port 8080. Gateway routes to services using Eureka load-balanced URIs like <code>lb://USER-SERVICE</code>.</td></tr>
+</table>
+
+<h2>Project Questions</h2>
+<div class="qa"><div class="q">1. Explain your project in one minute.</div><div class="a">It is a business travel and claim management application using Angular frontend and Spring Boot microservices. Users can log in, manage trips, expenses, claims, and users. Gateway is the single entry point, Eureka handles discovery, Config Server centralizes configuration, and each domain service owns its MySQL database.</div></div>
+<div class="qa"><div class="q">2. Why did you use microservices?</div><div class="a">To separate business domains, allow independent deployment, scale services separately, and keep ownership clear for user, trip, expense, and claim modules.</div></div>
+<div class="qa"><div class="q">3. What is the role of API Gateway?</div><div class="a">It routes all client requests to the correct service, centralizes CORS and cross-cutting concerns, and hides internal service URLs from the frontend.</div></div>
+<div class="qa"><div class="q">4. How does service discovery work here?</div><div class="a">Services register with Eureka. Gateway uses logical names like <code>USER-SERVICE</code> and Eureka resolves them to running service instances.</div></div>
+<div class="qa"><div class="q">5. What does Config Server do?</div><div class="a">It stores common and service-specific properties such as ports, database URLs, JPA settings, and actuator exposure in one central place.</div></div>
+<div class="qa"><div class="q">6. What are your main backend modules?</div><div class="a">User/Auth service, Trip service, Expense service, Claim service, API Gateway, Eureka registry, and Config Server.</div></div>
+<div class="qa"><div class="q">7. What are your main frontend modules?</div><div class="a">Login, dashboard, trips, expenses, claims, users, shared data table, confirmation dialog, loading overlay, guards, services, and interceptors.</div></div>
+<div class="qa"><div class="q">8. Which REST APIs did you build?</div><div class="a">CRUD APIs for users, trips, expenses, and claims, plus <code>/auth/login</code> for authentication.</div></div>
+<div class="qa"><div class="q">9. How is authentication handled?</div><div class="a">The user service validates email and BCrypt password, creates a simple JWT-like token, and Angular stores it in local or session storage.</div></div>
+<div class="qa"><div class="q">10. Is your token production-ready?</div><div class="a">No. It is a learning/demo token with <code>alg:none</code>. In production I would use signed JWT with secret/private key, Spring Security filters, refresh tokens, and token validation at the gateway or services.</div></div>
+<div class="qa"><div class="q">11. How do Angular requests include authentication?</div><div class="a">An HTTP interceptor reads the token from AuthService and adds <code>Authorization: Bearer token</code> to outgoing requests.</div></div>
+<div class="qa"><div class="q">12. How do you protect routes in Angular?</div><div class="a"><code>authGuard</code> blocks unauthenticated users, <code>guestGuard</code> redirects logged-in users away from login, and <code>adminGuard</code> protects user management.</div></div>
+<div class="qa"><div class="q">13. How is error handling done?</div><div class="a">Backend services use custom exceptions and global exception handlers. Frontend uses an error interceptor to show toast messages and logout on 401.</div></div>
+<div class="qa"><div class="q">14. How is loading state handled?</div><div class="a">Angular loading interceptor increments/decrements an active request counter in LoadingService, exposed as a signal.</div></div>
+<div class="qa"><div class="q">15. Why use DTOs?</div><div class="a">DTOs separate API request/response shape from entities, avoid exposing internal fields like password hash, and allow validation at the boundary.</div></div>
+<div class="qa"><div class="q">16. What validations exist?</div><div class="a">Required fields use <code>@NotBlank</code>/<code>@NotNull</code>, money fields use <code>@PositiveOrZero</code>, and unique values are checked in services and database columns.</div></div>
+<div class="qa"><div class="q">17. How do you avoid duplicate users?</div><div class="a">The user entity has unique email and service logic checks <code>existsByEmail</code> before insert.</div></div>
+<div class="qa"><div class="q">18. How do you avoid duplicate trips or claims?</div><div class="a">Trips use unique <code>tripCode</code>; claims use unique <code>claimNumber</code>; both are checked before create/update.</div></div>
+<div class="qa"><div class="q">19. Why does each service have its own database?</div><div class="a">It follows database-per-service ownership, reducing coupling and allowing independent schema changes.</div></div>
+<div class="qa"><div class="q">20. How would services communicate if needed?</div><div class="a">Synchronous REST through service discovery for direct lookups, or asynchronous events/message queue for workflows like claim approved -> payment -> notification.</div></div>
+<div class="qa"><div class="q">21. What is the start order?</div><div class="a">Config Server, Eureka Registry, domain services, API Gateway, then Angular frontend.</div></div>
+<div class="qa"><div class="q">22. What is the biggest improvement you would add?</div><div class="a">Real Spring Security JWT validation, Docker Compose, centralized logging, pagination, and message-driven payment/notification flows.</div></div>
+<div class="qa"><div class="q">23. How would you monitor this system?</div><div class="a">Use Spring Actuator, centralized logs, metrics with Prometheus/Grafana, distributed tracing, and gateway-level request monitoring.</div></div>
+<div class="qa"><div class="q">24. How would you deploy it?</div><div class="a">Build each service as a Docker image, use environment variables for configs, run through Docker Compose/Kubernetes, and put gateway behind a load balancer.</div></div>
+<div class="qa"><div class="q">25. What challenge did you face?</div><div class="a">Coordinating service ports, gateway routes, CORS, and frontend API paths. I solved it using centralized config and Gateway route mapping.</div></div>
+
+<h2>Java Questions</h2>
+<div class="qa"><div class="q">1. Why Java 17?</div><div class="a">It is an LTS version with modern language features, better performance, and strong Spring Boot support.</div></div>
+<div class="qa"><div class="q">2. What are OOP principles?</div><div class="a">Encapsulation, inheritance, polymorphism, and abstraction.</div></div>
+<div class="qa"><div class="q">3. Explain encapsulation in your project.</div><div class="a">Entity fields are accessed through Lombok getters/setters, and service logic hides repository details from controllers.</div></div>
+<div class="qa"><div class="q">4. What is polymorphism?</div><div class="a">Same interface or method call can behave differently based on implementation or object type.</div></div>
+<div class="qa"><div class="q">5. Abstract class vs interface?</div><div class="a">Interface defines contract; abstract class can share state and partial implementation. For service contracts, interfaces are preferred.</div></div>
+<div class="qa"><div class="q">6. What is JVM?</div><div class="a">JVM runs Java bytecode and provides memory management, garbage collection, and platform independence.</div></div>
+<div class="qa"><div class="q">7. JDK vs JRE vs JVM?</div><div class="a">JDK builds Java apps, JRE runs Java apps, JVM executes bytecode inside the runtime.</div></div>
+<div class="qa"><div class="q">8. What is garbage collection?</div><div class="a">Automatic memory cleanup for objects that are no longer reachable.</div></div>
+<div class="qa"><div class="q">9. Stack vs heap?</div><div class="a">Stack stores method frames and local references; heap stores objects.</div></div>
+<div class="qa"><div class="q">10. == vs equals?</div><div class="a"><code>==</code> compares references for objects; <code>equals</code> compares logical equality when implemented.</div></div>
+<div class="qa"><div class="q">11. hashCode contract?</div><div class="a">Equal objects must have same hashCode. It is important for HashMap and HashSet.</div></div>
+<div class="qa"><div class="q">12. ArrayList vs LinkedList?</div><div class="a">ArrayList is faster for random access; LinkedList is better for frequent middle insert/delete, but ArrayList is usually preferred.</div></div>
+<div class="qa"><div class="q">13. HashMap vs ConcurrentHashMap?</div><div class="a">HashMap is not thread-safe; ConcurrentHashMap supports safe concurrent access with better locking strategy.</div></div>
+<div class="qa"><div class="q">14. What is immutable class?</div><div class="a">A class whose object state cannot change after creation, like String.</div></div>
+<div class="qa"><div class="q">15. Why String is immutable?</div><div class="a">For security, caching, thread safety, and reliable hashCode usage.</div></div>
+<div class="qa"><div class="q">16. StringBuilder vs StringBuffer?</div><div class="a">StringBuilder is faster and not synchronized; StringBuffer is synchronized.</div></div>
+<div class="qa"><div class="q">17. Checked vs unchecked exceptions?</div><div class="a">Checked exceptions must be handled or declared; unchecked exceptions extend RuntimeException.</div></div>
+<div class="qa"><div class="q">18. What exceptions do you use?</div><div class="a">Custom runtime exceptions like UserNotFoundException, DuplicateResourceException, and InvalidCredentialsException.</div></div>
+<div class="qa"><div class="q">19. What is Optional?</div><div class="a">A container that may or may not hold a value, used to avoid direct null handling.</div></div>
+<div class="qa"><div class="q">20. What is Stream API?</div><div class="a">A functional style API for processing collections with map, filter, reduce, and collect/toList.</div></div>
+<div class="qa"><div class="q">21. Where did you use streams?</div><div class="a">In service methods to map entity lists to response DTO lists.</div></div>
+<div class="qa"><div class="q">22. Lambda expression?</div><div class="a">A short anonymous function used with functional interfaces.</div></div>
+<div class="qa"><div class="q">23. What is dependency injection?</div><div class="a">Objects receive dependencies from the framework instead of creating them manually.</div></div>
+<div class="qa"><div class="q">24. final keyword?</div><div class="a">For variables it prevents reassignment; for methods overriding; for classes inheritance.</div></div>
+<div class="qa"><div class="q">25. static keyword?</div><div class="a">Belongs to class rather than object instance.</div></div>
+<div class="qa"><div class="q">26. What is serialization?</div><div class="a">Converting object state to bytes or text for storage/transfer; JSON serialization is common in REST APIs.</div></div>
+<div class="qa"><div class="q">27. What is thread?</div><div class="a">A lightweight execution path inside a process.</div></div>
+<div class="qa"><div class="q">28. synchronized keyword?</div><div class="a">It restricts access to a block or method so only one thread executes it at a time.</div></div>
+<div class="qa"><div class="q">29. What is BigDecimal?</div><div class="a">A precise decimal type used for money values like budget, expenses, and claim amount.</div></div>
+<div class="qa"><div class="q">30. Why use LocalDate and LocalDateTime?</div><div class="a">They are modern Java time APIs; LocalDate for dates, LocalDateTime for timestamp fields.</div></div>
+
+<h2>Spring Boot Questions</h2>
+<div class="qa"><div class="q">1. What is Spring Boot?</div><div class="a">A framework that simplifies Spring application setup using auto-configuration, starters, and embedded servers.</div></div>
+<div class="qa"><div class="q">2. What is auto-configuration?</div><div class="a">Spring Boot configures beans automatically based on classpath dependencies and properties.</div></div>
+<div class="qa"><div class="q">3. What is starter dependency?</div><div class="a">A bundled dependency set for a feature, like web, data-jpa, validation, or actuator.</div></div>
+<div class="qa"><div class="q">4. @SpringBootApplication?</div><div class="a">Combines configuration, component scanning, and auto-configuration.</div></div>
+<div class="qa"><div class="q">5. @RestController?</div><div class="a">Marks a class as REST controller and returns JSON responses directly.</div></div>
+<div class="qa"><div class="q">6. @RequestMapping?</div><div class="a">Defines base URL path or HTTP mapping for controller methods/classes.</div></div>
+<div class="qa"><div class="q">7. @Service?</div><div class="a">Marks business logic classes as Spring-managed service beans.</div></div>
+<div class="qa"><div class="q">8. @Repository?</div><div class="a">Marks persistence layer beans; Spring Data JPA repositories are generated from interfaces.</div></div>
+<div class="qa"><div class="q">9. @Entity?</div><div class="a">Maps a Java class to a database table.</div></div>
+<div class="qa"><div class="q">10. @Transactional?</div><div class="a">Runs method logic inside a database transaction and rolls back on runtime exceptions.</div></div>
+<div class="qa"><div class="q">11. Why readOnly transaction?</div><div class="a">It optimizes read operations and communicates that no changes should be persisted.</div></div>
+<div class="qa"><div class="q">12. What is JPA?</div><div class="a">A Java specification for ORM, mapping objects to relational database tables.</div></div>
+<div class="qa"><div class="q">13. What is Hibernate?</div><div class="a">The common JPA implementation used by Spring Boot Data JPA.</div></div>
+<div class="qa"><div class="q">14. What is JpaRepository?</div><div class="a">It provides ready-made CRUD and pagination methods for entities.</div></div>
+<div class="qa"><div class="q">15. What is derived query method?</div><div class="a">Spring Data creates queries from method names like <code>existsByEmail</code>.</div></div>
+<div class="qa"><div class="q">16. What is <code>ddl-auto=update</code>?</div><div class="a">Hibernate updates schema automatically from entities. Good for development, but Flyway/Liquibase is better in production.</div></div>
+<div class="qa"><div class="q">17. What is Bean Validation?</div><div class="a">Validation annotations like <code>@NotBlank</code> run on request DTOs when using <code>@Valid</code>.</div></div>
+<div class="qa"><div class="q">18. How do you return 201 Created?</div><div class="a">Use <code>ResponseEntity.status(HttpStatus.CREATED).body(response)</code> after create.</div></div>
+<div class="qa"><div class="q">19. How do you handle 404?</div><div class="a">Throw custom NotFoundException and map it in a global exception handler.</div></div>
+<div class="qa"><div class="q">20. What is GlobalExceptionHandler?</div><div class="a">A centralized class with <code>@ControllerAdvice</code> that converts exceptions to consistent error responses.</div></div>
+<div class="qa"><div class="q">21. What is BCrypt?</div><div class="a">A secure password hashing algorithm with salt and work factor.</div></div>
+<div class="qa"><div class="q">22. Why not store plain passwords?</div><div class="a">If the database leaks, plain passwords expose users. Hashing reduces damage.</div></div>
+<div class="qa"><div class="q">23. What is Spring Cloud Gateway?</div><div class="a">A reactive API gateway for routing, filters, CORS, and cross-cutting request handling.</div></div>
+<div class="qa"><div class="q">24. What is Eureka?</div><div class="a">A service registry where services register and clients discover service instances dynamically.</div></div>
+<div class="qa"><div class="q">25. What is Config Server?</div><div class="a">A centralized external configuration server for multiple services.</div></div>
+<div class="qa"><div class="q">26. What is Actuator?</div><div class="a">Production-ready endpoints for health, info, metrics, and monitoring.</div></div>
+<div class="qa"><div class="q">27. Why use OpenAPI?</div><div class="a">To generate interactive API documentation and make testing easier.</div></div>
+<div class="qa"><div class="q">28. What is Lombok?</div><div class="a">A compile-time annotation library to reduce boilerplate like getters, setters, builders, and constructors.</div></div>
+<div class="qa"><div class="q">29. Why constructor injection?</div><div class="a">It makes dependencies explicit, supports immutability, and is easier to test.</div></div>
+<div class="qa"><div class="q">30. What is CORS?</div><div class="a">Browser security policy controlling cross-origin requests. Gateway config allows frontend calls to backend APIs.</div></div>
+<div class="qa"><div class="q">31. How would you secure services?</div><div class="a">Use Spring Security JWT filters, validate tokens, role-based authorization, HTTPS, and restrict direct service access.</div></div>
+<div class="qa"><div class="q">32. How would you add pagination?</div><div class="a">Use <code>Pageable</code> in repository/controller and return <code>Page&lt;DTO&gt;</code> or a custom page response.</div></div>
+<div class="qa"><div class="q">33. How do you test controllers?</div><div class="a">Use MockMvc or WebTestClient with mocked services for request/response validation.</div></div>
+<div class="qa"><div class="q">34. How do you test services?</div><div class="a">Use JUnit and Mockito for business logic, plus integration tests for repository/database behavior.</div></div>
+<div class="qa"><div class="q">35. What is the difference between monolith and microservices?</div><div class="a">A monolith deploys one application; microservices split domains into independently deployable services.</div></div>
+
+<h2>Angular Questions</h2>
+<div class="qa"><div class="q">1. What is Angular?</div><div class="a">A TypeScript framework for building component-based single-page applications.</div></div>
+<div class="qa"><div class="q">2. What Angular version is used?</div><div class="a">Angular 21 with standalone components/routes, signals, Angular Material, and RxJS.</div></div>
+<div class="qa"><div class="q">3. What is a component?</div><div class="a">A UI building block with TypeScript logic, HTML template, and CSS styles.</div></div>
+<div class="qa"><div class="q">4. What is service in Angular?</div><div class="a">A reusable class for shared logic like API calls, authentication, loading, and toast messages.</div></div>
+<div class="qa"><div class="q">5. What is dependency injection?</div><div class="a">Angular provides required services to components/classes instead of manual object creation.</div></div>
+<div class="qa"><div class="q">6. What is lazy loading?</div><div class="a">Loading route modules/components only when needed, improving initial load time.</div></div>
+<div class="qa"><div class="q">7. Where is lazy loading used?</div><div class="a">Login, dashboard, trips, expenses, claims, and users routes use <code>loadChildren</code> or <code>loadComponent</code>.</div></div>
+<div class="qa"><div class="q">8. What is Angular Router?</div><div class="a">It maps browser URLs to components and supports guards, redirects, and lazy routes.</div></div>
+<div class="qa"><div class="q">9. What are route guards?</div><div class="a">Functions/classes that decide whether navigation is allowed.</div></div>
+<div class="qa"><div class="q">10. What is HttpClient?</div><div class="a">Angular service for calling REST APIs and receiving typed Observables.</div></div>
+<div class="qa"><div class="q">11. What is interceptor?</div><div class="a">A function/class that processes HTTP requests or responses globally.</div></div>
+<div class="qa"><div class="q">12. Which interceptors are used?</div><div class="a">Auth token, error handling, and loading interceptors.</div></div>
+<div class="qa"><div class="q">13. What is RxJS Observable?</div><div class="a">A stream that emits async values, commonly used for HTTP responses and events.</div></div>
+<div class="qa"><div class="q">14. Observable vs Promise?</div><div class="a">Promise emits once; Observable can emit multiple values, can be cancelled, and supports operators.</div></div>
+<div class="qa"><div class="q">15. What is subscribe?</div><div class="a">It starts listening to an Observable and handles next/error/complete callbacks.</div></div>
+<div class="qa"><div class="q">16. What is signal?</div><div class="a">A reactive state primitive. This project uses signals for auth user/token and loading state.</div></div>
+<div class="qa"><div class="q">17. What is computed signal?</div><div class="a">A derived value that updates when dependent signals change, like <code>isAuthenticated</code>.</div></div>
+<div class="qa"><div class="q">18. What is localStorage vs sessionStorage?</div><div class="a">localStorage persists after browser close; sessionStorage clears when tab/session ends.</div></div>
+<div class="qa"><div class="q">19. How is remember me implemented?</div><div class="a">If selected, token/user go to localStorage; otherwise to sessionStorage.</div></div>
+<div class="qa"><div class="q">20. What is Angular Material?</div><div class="a">A UI component library used for dialogs, snack bars, and polished UI components.</div></div>
+<div class="qa"><div class="q">21. What is two-way binding?</div><div class="a">Binding where UI changes update component state and state changes update UI, usually with <code>ngModel</code>.</div></div>
+<div class="qa"><div class="q">22. Reactive forms vs template forms?</div><div class="a">Reactive forms are model-driven and easier for complex validation; template forms are simpler for small forms.</div></div>
+<div class="qa"><div class="q">23. What is TypeScript interface?</div><div class="a">A compile-time contract for object shape, used for User, Trip, Expense, Claim, and auth models.</div></div>
+<div class="qa"><div class="q">24. What is environment file?</div><div class="a">It stores environment-specific values like backend API base URL.</div></div>
+<div class="qa"><div class="q">25. How do you handle API errors?</div><div class="a">The error interceptor extracts message and displays it using ToastService.</div></div>
+<div class="qa"><div class="q">26. How do you avoid duplicate CRUD code?</div><div class="a">CrudHttpService provides generic list, create, update, and delete methods.</div></div>
+<div class="qa"><div class="q">27. What is standalone component?</div><div class="a">A component that declares its imports directly and does not require NgModule.</div></div>
+<div class="qa"><div class="q">28. How do you improve frontend performance?</div><div class="a">Lazy loading, trackBy in lists, OnPush/change detection optimization, caching, and reducing bundle size.</div></div>
+<div class="qa"><div class="q">29. How do you secure Angular app?</div><div class="a">Use route guards, token handling, HTTPS, avoid sensitive data in storage when possible, and enforce security on backend too.</div></div>
+<div class="qa"><div class="q">30. What is SPA?</div><div class="a">Single Page Application loads once and updates views client-side without full page reloads.</div></div>
+
+<h2>SQL and Database Questions</h2>
+<div class="qa"><div class="q">1. Which database is used?</div><div class="a">MySQL, with separate databases for user, trip, expense, and claim services.</div></div>
+<div class="qa"><div class="q">2. What is primary key?</div><div class="a">A unique identifier for each row, such as auto-generated <code>id</code>.</div></div>
+<div class="qa"><div class="q">3. What is foreign key?</div><div class="a">A column that references a primary key in another table to enforce relationship integrity.</div></div>
+<div class="qa"><div class="q">4. What is unique constraint?</div><div class="a">It prevents duplicate values, used for user email, trip code, and claim number.</div></div>
+<div class="qa"><div class="q">5. What is normalization?</div><div class="a">Organizing data to reduce duplication and improve consistency.</div></div>
+<div class="qa"><div class="q">6. What is denormalization?</div><div class="a">Adding controlled duplication to improve read performance.</div></div>
+<div class="qa"><div class="q">7. What is index?</div><div class="a">A data structure that improves search/filter speed but adds write overhead.</div></div>
+<div class="qa"><div class="q">8. Where would you add indexes?</div><div class="a">On email, tripCode, claimNumber, status, expenseDate, and frequently filtered columns.</div></div>
+<div class="qa"><div class="q">9. What is transaction?</div><div class="a">A group of DB operations executed atomically: all succeed or all rollback.</div></div>
+<div class="qa"><div class="q">10. ACID properties?</div><div class="a">Atomicity, Consistency, Isolation, Durability.</div></div>
+<div class="qa"><div class="q">11. INNER JOIN vs LEFT JOIN?</div><div class="a">INNER JOIN returns matching rows only; LEFT JOIN returns all left table rows plus matches.</div></div>
+<div class="qa"><div class="q">12. WHERE vs HAVING?</div><div class="a">WHERE filters rows before grouping; HAVING filters groups after aggregation.</div></div>
+<div class="qa"><div class="q">13. DELETE vs TRUNCATE?</div><div class="a">DELETE removes selected rows and can rollback; TRUNCATE removes all rows faster and resets identity in many DBs.</div></div>
+<div class="qa"><div class="q">14. CHAR vs VARCHAR?</div><div class="a">CHAR is fixed length; VARCHAR is variable length.</div></div>
+<div class="qa"><div class="q">15. Why use DECIMAL for money?</div><div class="a">It avoids floating point precision errors.</div></div>
+<div class="qa"><div class="q">16. What is SQL injection?</div><div class="a">An attack where malicious SQL is inserted into inputs. Prepared statements/JPA parameters prevent it.</div></div>
+<div class="qa"><div class="q">17. What is pagination query?</div><div class="a">Use <code>LIMIT</code> and <code>OFFSET</code>, or Spring Data Pageable.</div></div>
+<div class="qa"><div class="q">18. Query: total expense amount by category?</div><div class="a"><code>SELECT category, SUM(amount) FROM expenses GROUP BY category;</code></div></div>
+<div class="qa"><div class="q">19. Query: pending claims count?</div><div class="a"><code>SELECT COUNT(*) FROM claims WHERE status='PENDING';</code></div></div>
+<div class="qa"><div class="q">20. Query: trips ordered by start date?</div><div class="a"><code>SELECT * FROM trips ORDER BY start_date DESC;</code></div></div>
+<div class="qa"><div class="q">21. Query: find duplicate emails?</div><div class="a"><code>SELECT email, COUNT(*) FROM users GROUP BY email HAVING COUNT(*) &gt; 1;</code></div></div>
+<div class="qa"><div class="q">22. What is isolation level?</div><div class="a">It controls how transactions see changes from other transactions.</div></div>
+<div class="qa"><div class="q">23. Dirty read?</div><div class="a">Reading uncommitted data from another transaction.</div></div>
+<div class="qa"><div class="q">24. Non-repeatable read?</div><div class="a">Same row read twice gives different values because another transaction committed updates.</div></div>
+<div class="qa"><div class="q">25. Phantom read?</div><div class="a">Same query returns different row set because another transaction inserted/deleted rows.</div></div>
+<div class="qa"><div class="q">26. What is N+1 problem?</div><div class="a">ORM executes one query for parent rows and additional queries for each child row. Use joins/entity graphs/fetch strategies.</div></div>
+<div class="qa"><div class="q">27. What is migration tool?</div><div class="a">Flyway or Liquibase manages schema versioning instead of relying on ddl-auto update.</div></div>
+<div class="qa"><div class="q">28. How do you backup DB?</div><div class="a">Use scheduled dumps/snapshots, point-in-time recovery, and test restore process.</div></div>
+<div class="qa"><div class="q">29. How do you improve slow queries?</div><div class="a">Analyze execution plan, add indexes, reduce selected columns, paginate, and avoid unnecessary joins.</div></div>
+<div class="qa"><div class="q">30. What is database-per-service challenge?</div><div class="a">Cross-service joins are not direct; use APIs, events, read models, or reporting databases.</div></div>
+
+<h2>System Design Questions</h2>
+<div class="qa"><div class="q">1. Draw your architecture.</div><div class="a">Angular -> API Gateway -> Eureka-discovered services -> separate MySQL DBs. Config Server supplies properties to services.</div></div>
+<div class="qa"><div class="q">2. Why Gateway as single entry point?</div><div class="a">It simplifies client integration and centralizes routing, CORS, auth, logging, and rate limiting.</div></div>
+<div class="qa"><div class="q">3. How would you scale this app?</div><div class="a">Run multiple instances of high-traffic services, let Eureka register them, and Gateway load-balances via <code>lb://</code>.</div></div>
+<div class="qa"><div class="q">4. How would you handle service failure?</div><div class="a">Use retries, timeouts, circuit breakers, fallback responses, and monitoring alerts.</div></div>
+<div class="qa"><div class="q">5. What is circuit breaker?</div><div class="a">A pattern that stops calls to failing service temporarily to avoid cascading failures.</div></div>
+<div class="qa"><div class="q">6. How would claim approval work?</div><div class="a">Claim service changes status, publishes event, payment service processes reimbursement, notification service informs user.</div></div>
+<div class="qa"><div class="q">7. Sync vs async communication?</div><div class="a">Sync REST is simple for immediate responses; async messaging is better for long-running workflows and resilience.</div></div>
+<div class="qa"><div class="q">8. How would you ensure consistency across services?</div><div class="a">Use saga pattern and events instead of distributed transactions.</div></div>
+<div class="qa"><div class="q">9. What is saga pattern?</div><div class="a">A sequence of local transactions with compensating actions if a later step fails.</div></div>
+<div class="qa"><div class="q">10. How would you design authentication?</div><div class="a">User service issues signed JWT, Gateway validates token, services enforce role/permission where needed.</div></div>
+<div class="qa"><div class="q">11. How would you do authorization?</div><div class="a">Use roles like ADMIN, MANAGER, EMPLOYEE and method/route-level access rules.</div></div>
+<div class="qa"><div class="q">12. How would you store files/receipts?</div><div class="a">Store files in object storage like S3 and save metadata/URL in Expense or Claim service.</div></div>
+<div class="qa"><div class="q">13. How would dashboard data be built?</div><div class="a">Either aggregate by calling services or maintain a read-optimized dashboard/reporting model through events.</div></div>
+<div class="qa"><div class="q">14. How would you add search?</div><div class="a">Basic DB indexes for small scale; Elasticsearch/OpenSearch for advanced text search and filters.</div></div>
+<div class="qa"><div class="q">15. How would you add pagination?</div><div class="a">API accepts page, size, sort; repository returns paginated results; frontend table consumes metadata.</div></div>
+<div class="qa"><div class="q">16. How would you prevent duplicate requests?</div><div class="a">Use idempotency keys for create/payment APIs and unique business keys like claimNumber.</div></div>
+<div class="qa"><div class="q">17. What is idempotency?</div><div class="a">Same request repeated multiple times produces the same result without duplicate side effects.</div></div>
+<div class="qa"><div class="q">18. How would you handle rate limiting?</div><div class="a">Add gateway-level rate limiting per user/IP using Redis-backed counters.</div></div>
+<div class="qa"><div class="q">19. How would you log requests?</div><div class="a">Use gateway filters, correlation IDs, structured JSON logs, and centralized log storage.</div></div>
+<div class="qa"><div class="q">20. What is correlation ID?</div><div class="a">A unique request ID passed across services to trace one user request end-to-end.</div></div>
+<div class="qa"><div class="q">21. How would you monitor latency?</div><div class="a">Actuator metrics plus Prometheus/Grafana and distributed tracing with Zipkin/Tempo/Jaeger.</div></div>
+<div class="qa"><div class="q">22. How would you secure configs?</div><div class="a">Use environment variables, vault/secret manager, encrypted config values, and never commit real passwords.</div></div>
+<div class="qa"><div class="q">23. What is database sharding?</div><div class="a">Splitting data across multiple DB nodes by key to handle high scale.</div></div>
+<div class="qa"><div class="q">24. What is caching?</div><div class="a">Storing frequently used data in memory like Redis to reduce DB/API load.</div></div>
+<div class="qa"><div class="q">25. What would you cache?</div><div class="a">User profile/role, dashboard summaries, dropdown/master data, and rarely changing lookup values.</div></div>
+<div class="qa"><div class="q">26. How would you invalidate cache?</div><div class="a">Use TTL and explicit eviction after updates.</div></div>
+<div class="qa"><div class="q">27. How would you design notifications?</div><div class="a">Consume events from queue, render template, send email/SMS, retry failures, and store delivery status.</div></div>
+<div class="qa"><div class="q">28. How would you design payments?</div><div class="a">Payment service receives approved claim event, creates payment record, calls provider, handles callback, and updates status.</div></div>
+<div class="qa"><div class="q">29. How would you make it production-ready?</div><div class="a">Docker, CI/CD, signed JWT, migration scripts, tests, logs, metrics, tracing, secrets management, and HTTPS.</div></div>
+<div class="qa"><div class="q">30. What are microservice tradeoffs?</div><div class="a">Pros: scalability and separation. Cons: operational complexity, network failure, data consistency, and monitoring complexity.</div></div>
+
+<h2>DSA Questions Based on This Project</h2>
+<div class="qa"><div class="q">1. Which DSA topics are most relevant?</div><div class="a">Arrays/lists, hash maps, strings, sorting, searching, queues, heaps, trees, graphs, and basic dynamic programming.</div></div>
+<div class="qa"><div class="q">2. Find duplicate emails in a user list.</div><div class="a">Use HashSet. If email already exists, it is duplicate. Time O(n), space O(n).</div></div>
+<div class="qa"><div class="q">3. Group expenses by category.</div><div class="a">Use HashMap category -> total amount. Time O(n).</div></div>
+<div class="qa"><div class="q">4. Sort trips by start date.</div><div class="a">Use comparator on startDate. Time O(n log n).</div></div>
+<div class="qa"><div class="q">5. Search claim by claimNumber.</div><div class="a">For repeated lookup, use HashMap claimNumber -> Claim for O(1) average search.</div></div>
+<div class="qa"><div class="q">6. Find top 3 highest expenses.</div><div class="a">Use min heap of size 3. Time O(n log k).</div></div>
+<div class="qa"><div class="q">7. Find total monthly expenses.</div><div class="a">Iterate expenses, filter by month/year, sum amount. Time O(n).</div></div>
+<div class="qa"><div class="q">8. Detect overlapping trips.</div><div class="a">Sort by start date; overlap exists if current start <= previous end.</div></div>
+<div class="qa"><div class="q">9. Validate balanced brackets in expression.</div><div class="a">Use stack; push opening brackets, match closing brackets. Time O(n).</div></div>
+<div class="qa"><div class="q">10. Implement LRU cache.</div><div class="a">Use HashMap plus doubly linked list for O(1) get/put.</div></div>
+<div class="qa"><div class="q">11. BFS use case?</div><div class="a">Find shortest path in unweighted graph, like approval hierarchy levels.</div></div>
+<div class="qa"><div class="q">12. DFS use case?</div><div class="a">Traverse dependency graph or organizational tree recursively.</div></div>
+<div class="qa"><div class="q">13. Binary search use case?</div><div class="a">Search sorted trip dates or amounts in O(log n).</div></div>
+<div class="qa"><div class="q">14. Two-pointer use case?</div><div class="a">Pair expenses/trips after sorting, or check intervals efficiently.</div></div>
+<div class="qa"><div class="q">15. Sliding window use case?</div><div class="a">Find max expense total in any 7-day period.</div></div>
+<div class="qa"><div class="q">16. Queue use case?</div><div class="a">Process notifications or jobs in FIFO order.</div></div>
+<div class="qa"><div class="q">17. Stack use case?</div><div class="a">Undo operations or expression validation.</div></div>
+<div class="qa"><div class="q">18. Heap use case?</div><div class="a">Top K expenses, latest pending claims, or priority notifications.</div></div>
+<div class="qa"><div class="q">19. Trie use case?</div><div class="a">Autocomplete employee names, trip codes, or destinations.</div></div>
+<div class="qa"><div class="q">20. Graph use case?</div><div class="a">Approval workflow, service dependency map, or route planning.</div></div>
+<div class="qa"><div class="q">21. Time complexity of HashMap lookup?</div><div class="a">Average O(1), worst O(n) but improved with tree bins in modern Java for collisions.</div></div>
+<div class="qa"><div class="q">22. Time complexity of sorting?</div><div class="a">Usually O(n log n).</div></div>
+<div class="qa"><div class="q">23. Reverse a string.</div><div class="a">Use two pointers swapping characters, or StringBuilder reverse.</div></div>
+<div class="qa"><div class="q">24. Check palindrome.</div><div class="a">Use two pointers from both ends and compare characters.</div></div>
+<div class="qa"><div class="q">25. First non-repeating character.</div><div class="a">Count characters with LinkedHashMap, then return first with count 1.</div></div>
+<div class="qa"><div class="q">26. Merge two sorted lists.</div><div class="a">Use two pointers and append smaller item each time. Time O(n+m).</div></div>
+<div class="qa"><div class="q">27. Find missing number from 1..n.</div><div class="a">Use expected sum n(n+1)/2 minus actual sum, or XOR.</div></div>
+<div class="qa"><div class="q">28. Remove duplicates from array.</div><div class="a">Use HashSet, or two pointers if sorted.</div></div>
+<div class="qa"><div class="q">29. Count API hits per user.</div><div class="a">Use HashMap userId -> count; for time windows use queue/timestamps or Redis sorted sets.</div></div>
+<div class="qa"><div class="q">30. Design rate limiter DSA.</div><div class="a">Token bucket or sliding window counter using queue/map per user.</div></div>
+
+<h2>Short Closing Pitch</h2>
+<p>My project is a Spring Boot and Angular microservices application for business travel, expenses, and claims. I implemented separate services with REST APIs, DTO validation, JPA persistence, Eureka discovery, centralized configuration, and API Gateway routing. On the frontend I used Angular routes, guards, interceptors, services, signals, and Angular Material to build secured CRUD screens. If I take this to production, I would strengthen JWT security, add Docker/CI-CD, pagination, observability, migration scripts, and event-driven payment/notification workflows.</p>
+</body>
+</html>

@@ -1,71 +1,89 @@
 <div class="page-grid">
-  <mat-card class="section-card form-card compact-form-card">
-    <div class="card-head">
+  @if (!isFormPage()) {
+    <div class="page-toolbar">
       <div>
-        <h2>{{ editingTripId() ? 'Update Trip' : 'Create Trip' }}</h2>
+        <span class="page-kicker">Travel registry</span>
+        <h1>Trips</h1>
       </div>
-      @if (editingTripId()) {
-        <button mat-stroked-button type="button" (click)="resetForm()">Cancel edit</button>
-      }
+      <button mat-flat-button routerLink="/trips/new" type="button">
+        <mat-icon>add</mat-icon>
+        <span>Create Trip</span>
+      </button>
     </div>
 
-    <form [formGroup]="tripForm" (ngSubmit)="submit()" class="page-grid">
-      <div class="form-grid">
-        <mat-form-field appearance="outline">
-          <mat-label>Trip code</mat-label>
-          <input matInput formControlName="tripCode" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Destination</mat-label>
-          <input matInput formControlName="destination" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Start date</mat-label>
-          <input matInput [matDatepicker]="startPicker" [min]="today" formControlName="startDate" />
-          <mat-datepicker-toggle matIconSuffix [for]="startPicker" />
-          <mat-datepicker #startPicker [calendarHeaderComponent]="calendarHeaderComponent" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>End date</mat-label>
-          <input matInput [matDatepicker]="endPicker" [min]="startDateMin()" formControlName="endDate" />
-          <mat-datepicker-toggle matIconSuffix [for]="endPicker" />
-          <mat-datepicker #endPicker [calendarHeaderComponent]="calendarHeaderComponent" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Budget</mat-label>
-          <input matInput type="number" formControlName="budget" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Status</mat-label>
-          <mat-select formControlName="status">
-            <mat-option value="PLANNED">Planned</mat-option>
-            <mat-option value="IN_PROGRESS">In Progress</mat-option>
-            <mat-option value="COMPLETED">Completed</mat-option>
-            <mat-option value="CANCELLED">Cancelled</mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
-
-      <div class="action-row">
-        <button mat-flat-button type="submit">
-          {{ editingTripId() ? 'Save Changes' : 'Create Trip' }}
+    <mat-card class="section-card scroll-card table-card">
+      <app-data-table
+        title="Trips"
+        searchPlaceholder="Search trips"
+        [rows]="trips()"
+        [columns]="tableColumns"
+        [actions]="tableActions"
+        [showTitle]="false"
+      />
+    </mat-card>
+  } @else {
+    <mat-card class="section-card form-card form-page-card">
+      <div class="card-head">
+        <div>
+          <span class="page-kicker">Trip workflow</span>
+          <h2>{{ editingTripId() ? 'Update Trip' : 'Create Trip' }}</h2>
+          <p>{{ editingTripId() ? 'Refine travel details before the next approval step.' : 'Start a clean travel request from a focused form.' }}</p>
+        </div>
+        <button mat-stroked-button routerLink="/trips" type="button">
+          <mat-icon>arrow_back</mat-icon>
+          <span>Back to Trips</span>
         </button>
       </div>
-    </form>
-  </mat-card>
 
-  <mat-card class="section-card scroll-card table-card">
-    <app-data-table
-      title="Trips"
-      searchPlaceholder="Search trips"
-      [rows]="trips()"
-      [columns]="tableColumns"
-      [actions]="tableActions"
-    />
-  </mat-card>
+      <form [formGroup]="tripForm" (ngSubmit)="submit()" class="page-grid">
+        <div class="form-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Trip code</mat-label>
+            <input matInput formControlName="tripCode" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Destination</mat-label>
+            <input matInput formControlName="destination" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Start date</mat-label>
+            <input matInput [matDatepicker]="startPicker" [min]="today" formControlName="startDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="startPicker" />
+            <mat-datepicker #startPicker [calendarHeaderComponent]="calendarHeaderComponent" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>End date</mat-label>
+            <input matInput [matDatepicker]="endPicker" [min]="startDateMin()" formControlName="endDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="endPicker" />
+            <mat-datepicker #endPicker [calendarHeaderComponent]="calendarHeaderComponent" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Budget</mat-label>
+            <input matInput type="number" formControlName="budget" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Status</mat-label>
+            <mat-select formControlName="status">
+              <mat-option value="PLANNED">Planned</mat-option>
+              <mat-option value="IN_PROGRESS">In Progress</mat-option>
+              <mat-option value="COMPLETED">Completed</mat-option>
+              <mat-option value="CANCELLED">Cancelled</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="action-row">
+          <button mat-stroked-button routerLink="/trips" type="button">Cancel</button>
+          <button mat-flat-button type="submit">
+            {{ editingTripId() ? 'Save Changes' : 'Create Trip' }}
+          </button>
+        </div>
+      </form>
+    </mat-card>
+  }
 </div>

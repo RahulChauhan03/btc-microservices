@@ -1,72 +1,90 @@
 <div class="page-grid">
-  <section class="metrics-grid">
-    <mat-card class="section-card summary-card">
-      <span>Pending Claims</span>
-      <strong>{{ pendingClaims() }}</strong>
-    </mat-card>
-    <mat-card class="section-card summary-card">
-      <span>Total Claims</span>
-      <strong>{{ claims().length }}</strong>
-    </mat-card>
-  </section>
-
-  <mat-card class="section-card compact-form-card">
-    <div class="card-head">
+  @if (!isFormPage()) {
+    <div class="page-toolbar">
       <div>
-        <h2>{{ editingClaimId() ? 'Edit Claim' : 'Submit Claim' }}</h2>
+        <span class="page-kicker">Claim queue</span>
+        <h1>Claims</h1>
       </div>
-      @if (editingClaimId()) {
-        <button mat-stroked-button type="button" (click)="resetForm()">Cancel edit</button>
-      }
+      <button mat-flat-button routerLink="/claims/new" type="button">
+        <mat-icon>add</mat-icon>
+        <span>Submit Claim</span>
+      </button>
     </div>
-    <form [formGroup]="claimForm" (ngSubmit)="submit()" class="page-grid">
-      <div class="form-grid">
-        <mat-form-field appearance="outline">
-          <mat-label>Claim number</mat-label>
-          <input matInput formControlName="claimNumber" />
-        </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Title</mat-label>
-          <input matInput formControlName="title" />
-        </mat-form-field>
+    <section class="metrics-grid">
+      <mat-card class="section-card summary-card">
+        <span>Pending Claims</span>
+        <strong>{{ pendingClaims() }}</strong>
+      </mat-card>
+      <mat-card class="section-card summary-card">
+        <span>Total Claims</span>
+        <strong>{{ claims().length }}</strong>
+      </mat-card>
+    </section>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Amount</mat-label>
-          <input matInput type="number" formControlName="claimAmount" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Status</mat-label>
-          <mat-select formControlName="status">
-            <mat-option value="PENDING">Pending</mat-option>
-            <mat-option value="SUBMITTED">Submitted</mat-option>
-            <mat-option value="APPROVED">Approved</mat-option>
-            <mat-option value="REJECTED">Rejected</mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="comment-field">
-          <mat-label>Description</mat-label>
-          <textarea matInput rows="2" formControlName="description"></textarea>
-        </mat-form-field>
-      </div>
-
-      <div class="action-row">
-        <button mat-flat-button type="submit">
-          {{ editingClaimId() ? 'Update Claim' : 'Submit Claim' }}
+    <mat-card class="section-card scroll-card table-card">
+      <app-data-table
+        title="Claims"
+        searchPlaceholder="Search claims"
+        [rows]="claims()"
+        [columns]="tableColumns"
+        [actions]="tableActions"
+        [showTitle]="false"
+      />
+    </mat-card>
+  } @else {
+    <mat-card class="section-card form-page-card">
+      <div class="card-head">
+        <div>
+          <span class="page-kicker">Claim workflow</span>
+          <h2>{{ editingClaimId() ? 'Edit Claim' : 'Submit Claim' }}</h2>
+          <p>{{ editingClaimId() ? 'Update the claim in a dedicated review space.' : 'Submit claim details without competing table controls.' }}</p>
+        </div>
+        <button mat-stroked-button routerLink="/claims" type="button">
+          <mat-icon>arrow_back</mat-icon>
+          <span>Back to Claims</span>
         </button>
       </div>
-    </form>
-  </mat-card>
+      <form [formGroup]="claimForm" (ngSubmit)="submit()" class="page-grid">
+        <div class="form-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Claim number</mat-label>
+            <input matInput formControlName="claimNumber" />
+          </mat-form-field>
 
-  <mat-card class="section-card scroll-card table-card">
-    <app-data-table
-      title="Claims"
-      searchPlaceholder="Search claims"
-      [rows]="claims()"
-      [columns]="tableColumns"
-      [actions]="tableActions"
-    />
-  </mat-card>
+          <mat-form-field appearance="outline">
+            <mat-label>Title</mat-label>
+            <input matInput formControlName="title" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Amount</mat-label>
+            <input matInput type="number" formControlName="claimAmount" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Status</mat-label>
+            <mat-select formControlName="status">
+              <mat-option value="PENDING">Pending</mat-option>
+              <mat-option value="SUBMITTED">Submitted</mat-option>
+              <mat-option value="APPROVED">Approved</mat-option>
+              <mat-option value="REJECTED">Rejected</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="comment-field">
+            <mat-label>Description</mat-label>
+            <textarea matInput rows="2" formControlName="description"></textarea>
+          </mat-form-field>
+        </div>
+
+        <div class="action-row">
+          <button mat-stroked-button routerLink="/claims" type="button">Cancel</button>
+          <button mat-flat-button type="submit">
+            {{ editingClaimId() ? 'Update Claim' : 'Submit Claim' }}
+          </button>
+        </div>
+      </form>
+    </mat-card>
+  }
 </div>

@@ -5,7 +5,6 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 
@@ -50,7 +49,6 @@ export interface DataTableFilter {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatMenuModule,
     MatSelectModule,
     MatTableModule,
   ],
@@ -64,6 +62,7 @@ export class DataTableComponent<T = any> {
   @Input() actions: DataTableAction<T>[] = [];
   @Input() searchPlaceholder = 'Search';
   @Input() filters: DataTableFilter[] = [];
+  @Input() showTitle = true;
   @Input() minColumnWidth = 160;
   @Input() minTableWidth = 760;
 
@@ -73,11 +72,11 @@ export class DataTableComponent<T = any> {
   searchQuery = '';
 
   get displayedColumns(): string[] {
-    return this.actions.length ? ['actions', ...this.columns.map((column) => column.key)] : this.columns.map((column) => column.key);
+    return this.actions.length ? [...this.columns.map((column) => column.key), 'actions'] : this.columns.map((column) => column.key);
   }
 
   get tableMinWidth(): string {
-    const actionWidth = this.actions.length ? 56 : 0;
+    const actionWidth = this.actions.length ? 236 : 0;
     const calculatedWidth = this.columns.length * this.minColumnWidth + actionWidth;
     return `${Math.max(this.minTableWidth, calculatedWidth)}px`;
   }

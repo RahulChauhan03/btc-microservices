@@ -6,8 +6,56 @@
 }
 
 .actions-column {
-  width: 56px;
-  text-align: center;
+  width: 236px;
+  text-align: right;
+}
+
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+.row-action {
+  min-width: auto;
+  height: 34px;
+  padding: 0 0.72rem !important;
+  border-radius: 999px !important;
+  border-color: rgba(37, 99, 235, 0.18) !important;
+  background: rgba(255, 255, 255, 0.72);
+  color: #1d4ed8 !important;
+  font-size: 0.78rem;
+  font-weight: 750;
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.row-action mat-icon {
+  margin-right: 0.25rem;
+  font-size: 1rem;
+  height: 1rem;
+  width: 1rem;
+}
+
+.row-action:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.34) !important;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
+}
+
+.danger-action {
+  border-color: rgba(180, 35, 24, 0.18) !important;
+  color: #b42318 !important;
+}
+
+.danger-action:hover {
+  border-color: rgba(180, 35, 24, 0.34) !important;
+  box-shadow: 0 10px 22px rgba(180, 35, 24, 0.1);
 }
 
 .status-badge {
@@ -16,7 +64,7 @@
   min-height: 28px;
   border-radius: 999px;
   padding: 0.25rem 0.7rem;
-  background: #eef2f7;
+  background: #f1f5f9;
   color: #475569;
   font-size: 0.82rem;
   font-weight: 700;
@@ -27,14 +75,14 @@
 .status-planned,
 .status-submitted,
 .status-under-review {
-  background: #e0f2fe;
-  color: #0369a1;
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
 .status-in-progress,
 .status-manager {
-  background: #fef3c7;
-  color: #b45309;
+  background: #ffedd5;
+  color: #c2410c;
 }
 
 .status-completed,
@@ -53,9 +101,15 @@
 }
 
 .status-draft,
-.status-employee {
-  background: #ede9fe;
-  color: #6d28d9;
+.status-employee,
+.status-project-manager {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+.status-super-admin {
+  background: #111827;
+  color: #f8fafc;
 }
 
 .cell-select {
@@ -95,4 +149,27 @@
 .select-cell {
   text-align: center;
   vertical-align: middle;
+}
+
+@media (max-width: 720px) {
+  .actions-column {
+    width: 112px;
+  }
+
+  .row-actions {
+    gap: 0.35rem;
+  }
+
+  .row-action {
+    width: 34px;
+    padding: 0 !important;
+  }
+
+  .row-action mat-icon {
+    margin-right: 0;
+  }
+
+  .row-action span {
+    display: none;
+  }
 }

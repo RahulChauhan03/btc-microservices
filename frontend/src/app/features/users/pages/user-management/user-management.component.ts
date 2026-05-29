@@ -4,10 +4,13 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TOAST_MESSAGES } from '../../../../core/constants/toast-messages';
-import { User, UserPayload } from '../../../../core/models/domain.models';
+import { User, UserPayload, UserRole } from '../../../../core/models/domain.models';
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { UserService } from '../../../../core/services/user.service';
@@ -25,7 +28,10 @@ import {
     MatButtonModule,
     MatCardModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
+    MatSelectModule,
+    RouterLink,
     DataTableComponent,
   ],
   templateUrl: './user-management.component.html',
@@ -36,17 +42,26 @@ export class UserManagementComponent {
   private readonly userService = inject(UserService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly toastService = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   readonly users = signal<User[]>([]);
   readonly editingUserId = signal<number | null>(null);
+  readonly isFormPage = signal(false);
+  readonly roleOptions: { value: UserRole; label: string }[] = [
+    { value: 'SUPER_ADMIN', label: 'Super Admin' },
+    { value: 'ADMIN', label: 'Admin' },
+    { value: 'PROJECT_MANAGER', label: 'Project Manager' },
+    { value: 'EMPLOYEE', label: 'Employee' },
+  ];
   readonly tableColumns: DataTableColumn<User>[] = [
     { key: 'name', header: 'Name' },
     { key: 'email', header: 'Email' },
     { key: 'phone', header: 'Phone' },
+    { key: 'role', header: 'Role', type: 'chip' },
     { key: 'createdAt', header: 'Created', type: 'date' },
   ];
   readonly tableActions: DataTableAction<User>[] = [
-    { id: 'view', label: 'View', icon: 'visibility', handler: (user) => this.viewUser(user) },
     { id: 'edit', label: 'Edit', icon: 'edit', handler: (user) => this.editUser(user) },
     { id: 'delete', label: 'Delete', icon: 'delete', handler: (user) => this.deleteUser(user) },
   ];
@@ -54,10 +69,17 @@ export class UserManagementComponent {
     name: ['', Validators.required],
     email: ['', [Validators.required, Validators.email]],
     phone: ['', Validators.required],
+    role: ['EMPLOYEE' as UserRole, Validators.required],
     password: ['', [Validators.minLength(8)]],
   });
 
   constructor() {
+    this.route.paramMap.subscribe((params) => {
+      const id = Number(params.get('id'));
+      this.isFormPage.set(this.router.url.includes('/new') || this.router.url.includes('/edit/'));
+      this.editingUserId.set(Number.isFinite(id) && id > 0 ? id : null);
+      this.patchEditingUser();
+    });
     this.loadUsers();
   }
 
@@ -72,6 +94,7 @@ export class UserManagementComponent {
       name: formValue.name,
       email: formValue.email,
       phone: formValue.phone,
+      role: formValue.role,
       ...(formValue.password ? { password: formValue.password } : {}),
     };
 
@@ -85,6 +108,7 @@ export class UserManagementComponent {
       this.toastService.success(this.editingUserId() ? TOAST_MESSAGES.users.updated : TOAST_MESSAGES.users.created);
       this.resetForm();
       this.loadUsers();
+      this.router.navigate(['/users']);
     };
 
     if (this.editingUserId()) {
@@ -96,11 +120,24 @@ export class UserManagementComponent {
   }
 
   editUser(user: User): void {
-    this.editingUserId.set(user.id);
+    this.router.navigate(['/users/edit', user.id]);
+  }
+
+  private patchEditingUser(): void {
+    const user = this.users().find((item) => item.id === this.editingUserId());
+
+    if (!user) {
+      if (this.isFormPage() && !this.editingUserId()) {
+        this.resetForm();
+      }
+      return;
+    }
+
     this.userForm.patchValue({
       name: user.name,
       email: user.email,
       phone: user.phone,
+      role: user.role,
       password: '',
     });
   }
@@ -132,16 +169,19 @@ export class UserManagementComponent {
   }
 
   resetForm(): void {
-    this.editingUserId.set(null);
     this.userForm.reset({
       name: '',
       email: '',
       phone: '',
+      role: 'EMPLOYEE',
       password: '',
     });
   }
 
   private loadUsers(): void {
-    this.userService.getUsers((users) => this.users.set(users));
+    this.userService.getUsers((users) => {
+      this.users.set(users);
+      this.patchEditingUser();
+    });
   }
 }

@@ -8,4 +8,18 @@ export const CLAIMS_ROUTES: Routes = [
         (m) => m.ClaimManagementComponent,
       ),
   },
+  {
+    path: 'new',
+    loadComponent: () =>
+      import('./pages/claim-management/claim-management.component').then(
+        (m) => m.ClaimManagementComponent,
+      ),
+  },
+  {
+    path: 'edit/:id',
+    loadComponent: () =>
+      import('./pages/claim-management/claim-management.component').then(
+        (m) => m.ClaimManagementComponent,
+      ),
+  },
 ];

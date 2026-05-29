@@ -5,8 +5,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TOAST_MESSAGES } from '../../../../core/constants/toast-messages';
 import { Trip, TripPayload } from '../../../../core/models/domain.models';
@@ -29,8 +31,10 @@ import { DatepickerHeaderComponent } from '../../../../shared/components/datepic
     MatCardModule,
     MatDatepickerModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     MatSelectModule,
+    RouterLink,
     DataTableComponent,
   ],
   templateUrl: './trip-management.component.html',
@@ -41,11 +45,14 @@ export class TripManagementComponent {
   private readonly tripService = inject(TripService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly toastService = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   readonly today = this.startOfDay(new Date());
   readonly calendarHeaderComponent = DatepickerHeaderComponent;
 
   readonly trips = signal<Trip[]>([]);
   readonly editingTripId = signal<number | null>(null);
+  readonly isFormPage = signal(false);
   readonly tableColumns: DataTableColumn<Trip>[] = [
     { key: 'tripCode', header: 'Trip Code' },
     { key: 'destination', header: 'Destination' },
@@ -54,7 +61,6 @@ export class TripManagementComponent {
     { key: 'status', header: 'Status', type: 'chip' },
   ];
   readonly tableActions: DataTableAction<Trip>[] = [
-    { id: 'view', label: 'View', icon: 'visibility', handler: (trip) => this.viewTrip(trip) },
     { id: 'edit', label: 'Edit', icon: 'edit', handler: (trip) => this.editTrip(trip) },
     { id: 'delete', label: 'Delete', icon: 'delete', handler: (trip) => this.deleteTrip(trip) },
   ];
@@ -69,6 +75,12 @@ export class TripManagementComponent {
   });
 
   constructor() {
+    this.route.paramMap.subscribe((params) => {
+      const id = Number(params.get('id'));
+      this.isFormPage.set(this.router.url.includes('/new') || this.router.url.includes('/edit/'));
+      this.editingTripId.set(Number.isFinite(id) && id > 0 ? id : null);
+      this.patchEditingTrip();
+    });
     this.loadTrips();
     this.tripForm.controls.startDate.valueChanges.subscribe(() => {
       this.tripForm.controls.endDate.updateValueAndValidity();
@@ -76,7 +88,10 @@ export class TripManagementComponent {
   }
 
   loadTrips(): void {
-    this.tripService.getTrips((trips) => this.trips.set(trips));
+    this.tripService.getTrips((trips) => {
+      this.trips.set(trips);
+      this.patchEditingTrip();
+    });
   }
 
   submit(): void {
@@ -98,6 +113,7 @@ export class TripManagementComponent {
       this.toastService.success(this.editingTripId() ? TOAST_MESSAGES.trips.updated : TOAST_MESSAGES.trips.created);
       this.resetForm();
       this.loadTrips();
+      this.router.navigate(['/trips']);
     };
 
     if (this.editingTripId()) {
@@ -109,7 +125,19 @@ export class TripManagementComponent {
   }
 
   editTrip(trip: Trip): void {
-    this.editingTripId.set(trip.id);
+    this.router.navigate(['/trips/edit', trip.id]);
+  }
+
+  private patchEditingTrip(): void {
+    const trip = this.trips().find((item) => item.id === this.editingTripId());
+
+    if (!trip) {
+      if (this.isFormPage() && !this.editingTripId()) {
+        this.resetForm();
+      }
+      return;
+    }
+
     this.tripForm.patchValue({
       tripCode: trip.tripCode,
       destination: trip.destination,
@@ -147,7 +175,6 @@ export class TripManagementComponent {
   }
 
   resetForm(): void {
-    this.editingTripId.set(null);
     this.tripForm.reset({
       tripCode: '',
       destination: '',
