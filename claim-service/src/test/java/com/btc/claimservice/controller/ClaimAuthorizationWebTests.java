@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.btc.claimservice.client.ExpenseLockClient;
 import com.btc.claimservice.client.ExpenseLockClient.ExpenseSummary;
+import com.btc.claimservice.outbox.ClaimOutbox;
 import com.btc.claimservice.config.SecurityConfig;
 import com.btc.claimservice.entity.Claim;
 import com.btc.claimservice.repository.ClaimRepository;
@@ -51,6 +52,9 @@ class ClaimAuthorizationWebTests {
 
     @MockitoBean
     private ExpenseLockClient expenseLockClient;
+
+    @MockitoBean
+    private ClaimOutbox claimOutbox;
 
     @Test
     void clientSuppliedAmountStatusOwnerAndReviewerAreIgnored() throws Exception {

@@ -10,6 +10,8 @@ import com.btc.claimservice.exception.ClaimNotFoundException;
 import com.btc.claimservice.exception.DuplicateClaimException;
 import com.btc.claimservice.exception.InvalidClaimException;
 import com.btc.claimservice.exception.InvalidClaimStateException;
+import com.btc.claimservice.outbox.ClaimOutbox;
+import com.btc.claimservice.outbox.OutboxEventType;
 import com.btc.claimservice.repository.ClaimRepository;
 import com.btc.claimservice.security.CurrentUser;
 import com.btc.claimservice.service.ClaimService;
@@ -42,9 +44,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * - Only an administrator who does not own the claim may approve or reject it; both outcomes are final.
  * - Users see their own claims; administrators can read all claims.
  *
- * Cross-service consistency fails closed: if this transaction rolls back after locking, the lock is undone;
- * locks are released only after a delete/reject has committed. A failed release leaves expenses locked
- * (never unlocked under a live claim) and is logged for manual release.
+ * Cross-service consistency fails closed. A delete/reject records its lock release in the claim outbox in the
+ * same transaction, so the release is sent (with retries) only if, and always when, the claim change commits;
+ * until then the expenses stay locked, never unlocked under a live claim. A creation that rolls back after
+ * locking records a release in its own transaction. See {@link ClaimOutbox}.
  */
 @Slf4j
 @Service
@@ -56,6 +59,7 @@ public class ClaimServiceImpl implements ClaimService {
 
     private final ClaimRepository claimRepository;
     private final ExpenseLockClient expenseLockClient;
+    private final ClaimOutbox claimOutbox;
 
     @Override
     public ClaimResponseDto createClaim(ClaimRequestDto requestDto, CurrentUser actor) {
@@ -73,7 +77,8 @@ public class ClaimServiceImpl implements ClaimService {
                 .ownerId(actor.id())
                 .build());
         Long claimId = claim.getId();
-        onRollback(() -> expenseLockClient.releaseClaim(claimId), "Releasing expenses of rolled-back claim " + claimId);
+        onRollback(() -> claimOutbox.enqueueReleaseAfterRollback(OutboxEventType.CLAIM_CREATION_ROLLED_BACK, claimId,
+                expenseIds), "Recording the expense release of rolled-back claim " + claimId);
 
         applyLockedExpenses(claim, expenseLockClient.lockForClaim(claimId, actor.id(), expenseIds), expenseIds, actor);
         return mapToResponse(claimRepository.save(claim));
@@ -130,8 +135,9 @@ public class ClaimServiceImpl implements ClaimService {
     public void deleteClaim(Long id, CurrentUser actor) {
         Claim existingClaim = findOwnedClaim(id, actor);
         requireAwaitingReview(existingClaim);
+        Set<Long> expenseIds = Set.copyOf(existingClaim.getExpenseIds());
         claimRepository.delete(existingClaim);
-        afterCommit(() -> expenseLockClient.releaseClaim(id), "Releasing expenses of deleted claim " + id);
+        claimOutbox.enqueueRelease(OutboxEventType.CLAIM_DELETED, id, expenseIds);
     }
 
     @Override
@@ -142,7 +148,7 @@ public class ClaimServiceImpl implements ClaimService {
     @Override
     public ClaimResponseDto rejectClaim(Long id, CurrentUser actor) {
         ClaimResponseDto rejected = review(id, actor, ClaimStatus.REJECTED);
-        afterCommit(() -> expenseLockClient.releaseClaim(id), "Releasing expenses of rejected claim " + id);
+        claimOutbox.enqueueRelease(OutboxEventType.CLAIM_REJECTED, id, rejected.getExpenseIds());
         return rejected;
     }
 
@@ -224,20 +230,6 @@ public class ClaimServiceImpl implements ClaimService {
         return new ClaimNotFoundException("Claim not found with id: " + id);
     }
 
-    /** Runs once the surrounding transaction has committed (immediately when there is none, e.g. unit tests). */
-    private static void afterCommit(Runnable action, String description) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            runLoggingFailure(action, description);
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                runLoggingFailure(action, description);
-            }
-        });
-    }
-
     /** Compensation that runs only if the surrounding transaction rolls back. */
     private static void onRollback(Runnable action, String description) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -257,8 +249,8 @@ public class ClaimServiceImpl implements ClaimService {
         try {
             action.run();
         } catch (RuntimeException exception) {
-            log.error("{} failed; the expenses stay locked until released manually "
-                    + "(see docs/migrations/phase-4-flyway.md, 'Releasing a stuck expense lock')", description, exception);
+            log.error("{} failed; reconcile the claim's expense locks manually "
+                    + "(docs/operations/phase-5-claim-outbox.md, 'Reconciling locks')", description, exception);
         }
     }
 

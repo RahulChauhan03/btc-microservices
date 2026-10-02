@@ -6,10 +6,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.btc.claimservice.client.ExpenseLockClient;
@@ -18,9 +18,10 @@ import com.btc.claimservice.dto.ClaimRequestDto;
 import com.btc.claimservice.dto.ClaimResponseDto;
 import com.btc.claimservice.entity.Claim;
 import com.btc.claimservice.exception.ClaimNotFoundException;
-import com.btc.claimservice.exception.DependencyUnavailableException;
 import com.btc.claimservice.exception.InvalidClaimException;
 import com.btc.claimservice.exception.InvalidClaimStateException;
+import com.btc.claimservice.outbox.ClaimOutbox;
+import com.btc.claimservice.outbox.OutboxEventType;
 import com.btc.claimservice.repository.ClaimRepository;
 import com.btc.claimservice.security.CurrentUser;
 import java.math.BigDecimal;
@@ -34,7 +35,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 
-/** Business rules in isolation (no transaction: post-commit releases run immediately). */
+/** Business rules in isolation; lock releases are recorded in the (mocked) claim outbox. */
 class ClaimServiceImplTests {
 
     private static final CurrentUser OWNER = new CurrentUser(10L, false);
@@ -44,7 +45,8 @@ class ClaimServiceImplTests {
 
     private final ClaimRepository claimRepository = mock(ClaimRepository.class);
     private final ExpenseLockClient expenseLockClient = mock(ExpenseLockClient.class);
-    private final ClaimServiceImpl claimService = new ClaimServiceImpl(claimRepository, expenseLockClient);
+    private final ClaimOutbox claimOutbox = mock(ClaimOutbox.class);
+    private final ClaimServiceImpl claimService = new ClaimServiceImpl(claimRepository, expenseLockClient, claimOutbox);
 
     @BeforeEach
     void setUp() {
@@ -120,6 +122,7 @@ class ClaimServiceImplTests {
         assertThat(approved.getStatus()).isEqualTo("APPROVED");
         assertThat(approved.getReviewedBy()).isEqualTo(ADMIN.id());
         verify(expenseLockClient, never()).releaseClaim(anyLong());
+        verifyNoInteractions(claimOutbox);
     }
 
     @Test
@@ -130,16 +133,9 @@ class ClaimServiceImplTests {
         assertThat(claimService.rejectClaim(7L, ADMIN).getStatus()).isEqualTo("REJECTED");
         claimService.deleteClaim(9L, OWNER);
 
-        verify(expenseLockClient).releaseClaim(7L);
-        verify(expenseLockClient).releaseClaim(9L);
-    }
-
-    @Test
-    void failedReleaseDoesNotUndoTheRejection() {
-        stored(7L, OWNER.id(), "SUBMITTED", 1L);
-        doThrow(new DependencyUnavailableException("down", null)).when(expenseLockClient).releaseClaim(7L);
-
-        assertThat(claimService.rejectClaim(7L, ADMIN).getStatus()).isEqualTo("REJECTED");
+        verify(claimOutbox).enqueueRelease(OutboxEventType.CLAIM_REJECTED, 7L, List.of(1L));
+        verify(claimOutbox).enqueueRelease(OutboxEventType.CLAIM_DELETED, 9L, Set.of(2L));
+        verify(expenseLockClient, never()).releaseClaim(anyLong());
     }
 
     @Test
@@ -158,6 +154,7 @@ class ClaimServiceImplTests {
                 .as("legacy claim without server-calculated amount").isInstanceOf(InvalidClaimStateException.class);
         verify(claimRepository, never()).delete(any());
         verify(expenseLockClient, never()).releaseClaim(anyLong());
+        verifyNoInteractions(claimOutbox);
     }
 
     @Test

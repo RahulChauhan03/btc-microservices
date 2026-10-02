@@ -8,7 +8,7 @@ Flyway now owns the schema of the four database services; Hibernate only validat
 | user-service | `V1__baseline` |
 | trip-service | `V1__baseline`, `V2__trip_ownership` |
 | expense-service | `V1__baseline`, `V2__expense_ownership`, `V3__expense_claim_lock` |
-| claim-service | `V1__baseline`, `V2__claim_ownership_and_expenses`, `V3__claim_version` |
+| claim-service | `V1__baseline`, `V2__claim_ownership_and_expenses`, `V3__claim_version`, `V4__claim_outbox` (Phase 5, see `docs/operations/phase-5-claim-outbox.md`) |
 
 * `V1` is the schema Hibernate created before Flyway, copied from a MySQL replica. It runs **only on an empty
   database**. Existing databases are *baselined* at version 1, so V1 is recorded but never executed there.
@@ -122,9 +122,10 @@ UPDATE expense_service_db.expenses e
 
 ## 5. Releasing a stuck expense lock
 
-Locks are released after a claim is rejected or deleted. If expense-service was unreachable at that moment,
-claim-service logs `Releasing expenses of ... claim N failed` and the expenses stay locked (deliberately: it
-never leaves an expense editable while a live claim covers it). After confirming claim `N` is rejected or deleted:
+Since Phase 5, releases go through the claim outbox and are retried automatically; recover a `FAILED` event as
+described in `docs/operations/phase-5-claim-outbox.md` rather than editing locks directly. Use the SQL below
+only when no outbox event exists for the claim (see "Reconciling locks" there), after confirming claim `N` is
+rejected or deleted:
 
 ```sql
 SELECT id, status FROM claim_service_db.claims WHERE id = <N>;            -- must be REJECTED or no row

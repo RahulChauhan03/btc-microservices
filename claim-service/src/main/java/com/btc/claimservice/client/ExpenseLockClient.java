@@ -17,7 +17,12 @@ public interface ExpenseLockClient {
      */
     List<ExpenseSummary> lockForClaim(Long claimId, Long ownerId, Collection<Long> expenseIds);
 
-    /** Releases every expense the claim holds. Idempotent. */
+    /**
+     * Releases every expense the claim holds (only those; other claims' locks are untouched). Idempotent.
+     *
+     * @throws com.btc.claimservice.exception.ExpenseServiceRejectedException for a refusal retrying cannot fix
+     * @throws com.btc.claimservice.exception.DependencyUnavailableException  for outages and other transient errors
+     */
     void releaseClaim(Long claimId);
 
     @JsonIgnoreProperties(ignoreUnknown = true)

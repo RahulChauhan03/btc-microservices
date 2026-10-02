@@ -12,6 +12,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.btc.claimservice.client.ExpenseLockClient.ExpenseSummary;
 import com.btc.claimservice.exception.DependencyUnavailableException;
+import com.btc.claimservice.exception.ExpenseServiceRejectedException;
 import com.btc.claimservice.exception.InvalidClaimException;
 import com.btc.claimservice.exception.InvalidClaimStateException;
 import com.btc.claimservice.security.ServiceTokenProvider;
@@ -90,6 +91,23 @@ class RestExpenseLockClientTests {
         server.expect(requestTo(URL)).andExpect(method(HttpMethod.DELETE)).andRespond(withNoContent());
 
         client.releaseClaim(7L);
+        server.verify();
+    }
+
+    @Test
+    void releaseFailuresAreClassifiedForTheOutbox() {
+        server.expect(requestTo(URL)).andRespond(withStatus(HttpStatus.FORBIDDEN));
+        server.expect(requestTo(URL)).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        server.expect(requestTo(URL)).andRespond(withStatus(HttpStatus.UNAUTHORIZED));
+        server.expect(requestTo(URL)).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+        server.expect(requestTo(URL)).andRespond(withServerError());
+
+        assertThatThrownBy(() -> client.releaseClaim(7L)).as("permanent").isInstanceOf(ExpenseServiceRejectedException.class)
+                .hasMessage("Expense service refused the release: HTTP 403");
+        assertThatThrownBy(() -> client.releaseClaim(7L)).as("permanent").isInstanceOf(ExpenseServiceRejectedException.class);
+        for (int retryable = 0; retryable < 3; retryable++) {
+            assertThatThrownBy(() -> client.releaseClaim(7L)).isInstanceOf(DependencyUnavailableException.class);
+        }
         server.verify();
     }
 }

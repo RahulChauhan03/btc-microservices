@@ -3,6 +3,7 @@ package com.btc.claimservice.repository;
 import com.btc.claimservice.entity.Claim;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,6 +19,9 @@ public interface ClaimRepository extends JpaRepository<Claim, Long> {
     boolean existsByClaimNumberAndIdNot(String claimNumber, Long id);
 
     Page<Claim> findAllByOwnerId(Long ownerId, Pageable pageable);
+
+    @Query("select c.status from Claim c where c.id = :id")
+    Optional<String> findStatusById(@Param("id") Long id);
 
     /**
      * Expense ids from {@code expenseIds} already covered by another claim that has not been rejected.

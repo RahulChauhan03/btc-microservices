@@ -1,6 +1,7 @@
 package com.btc.claimservice.client;
 
 import com.btc.claimservice.exception.DependencyUnavailableException;
+import com.btc.claimservice.exception.ExpenseServiceRejectedException;
 import com.btc.claimservice.exception.InvalidClaimException;
 import com.btc.claimservice.exception.InvalidClaimStateException;
 import com.btc.claimservice.security.ServiceTokenProvider;
@@ -8,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
@@ -23,6 +25,8 @@ import org.springframework.web.client.RestClientException;
 public class RestExpenseLockClient implements ExpenseLockClient {
 
     private static final String LOCKS_PATH = "/expenses/internal/claims/{claimId}/locks";
+    /** 401 can be a secret rotation still in progress; 408/429 are transient by definition. */
+    private static final Set<Integer> RETRYABLE_CLIENT_ERRORS = Set.of(401, 408, 429);
 
     private final RestClient restClient;
     private final ServiceTokenProvider serviceTokenProvider;
@@ -67,6 +71,12 @@ public class RestExpenseLockClient implements ExpenseLockClient {
                     .header(HttpHeaders.AUTHORIZATION, serviceTokenProvider.bearerToken())
                     .retrieve()
                     .toBodilessEntity();
+        } catch (HttpClientErrorException exception) {
+            if (RETRYABLE_CLIENT_ERRORS.contains(exception.getStatusCode().value())) {
+                throw new DependencyUnavailableException("Expense service is temporarily refusing requests", exception);
+            }
+            throw new ExpenseServiceRejectedException("Expense service refused the release: HTTP "
+                    + exception.getStatusCode().value(), exception);
         } catch (RestClientException exception) {
             throw new DependencyUnavailableException("Expense service is unavailable", exception);
         }

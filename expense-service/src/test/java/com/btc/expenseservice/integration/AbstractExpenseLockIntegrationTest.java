@@ -155,6 +155,24 @@ abstract class AbstractExpenseLockIntegrationTest {
     }
 
     @Test
+    void repeatedReleaseIsIdempotentAndNeverTouchesAnotherClaimsLocks() {
+        long a = expense(OWNER, null);
+        long b = expense(OWNER, null);
+        long c = expense(OWNER, null);
+        expenseLockService.lockForClaim(7L, OWNER, List.of(a));
+        expenseLockService.lockForClaim(8L, OWNER, List.of(b, c));
+
+        // claim-service's outbox delivers at least once, so the same release may arrive repeatedly.
+        assertThat(expenseLockService.releaseClaim(7L)).isEqualTo(1);
+        assertThat(expenseLockService.releaseClaim(7L)).isZero();
+        assertThat(expenseLockService.releaseClaim(9L)).as("unknown or already-released claim").isZero();
+
+        assertThat(lockOf(a)).isNull();
+        assertThat(lockOf(b)).isEqualTo(8L);
+        assertThat(lockOf(c)).isEqualTo(8L);
+    }
+
+    @Test
     void concurrentClaimsForTheSameExpenseCannotBothSucceed() throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {

@@ -22,6 +22,10 @@ import com.btc.claimservice.client.ExpenseLockClient.ExpenseSummary;
 import com.btc.claimservice.entity.Claim;
 import com.btc.claimservice.exception.DependencyUnavailableException;
 import com.btc.claimservice.exception.InvalidClaimStateException;
+import com.btc.claimservice.outbox.OutboxEvent;
+import com.btc.claimservice.outbox.OutboxEventRepository;
+import com.btc.claimservice.outbox.OutboxEventType;
+import com.btc.claimservice.outbox.OutboxStatus;
 import com.btc.claimservice.repository.ClaimRepository;
 import com.btc.claimservice.security.CurrentUser;
 import com.btc.claimservice.security.TestJwt;
@@ -48,6 +52,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /** Claim workflow with real transactions and database; only expense-service is replaced by a mock. */
 @SpringBootTest
@@ -72,12 +78,23 @@ abstract class AbstractClaimWorkflowIntegrationTest {
     @Autowired
     private ClaimService claimService;
 
+    private TransactionTemplate transaction;
+
+    @Autowired
+    void setTransactionManager(PlatformTransactionManager transactionManager) {
+        transaction = new TransactionTemplate(transactionManager);
+    }
+
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
     @MockitoBean
     private ExpenseLockClient expenseLockClient;
 
     @AfterEach
     void cleanUp() {
         claimRepository.deleteAll();
+        outboxEventRepository.deleteAll();
         reset(expenseLockClient);
     }
 
@@ -111,7 +128,7 @@ abstract class AbstractClaimWorkflowIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Expenses already included in another claim: [2]"));
 
         assertThat(claimRepository.count()).as("claim row rolled back").isZero();
-        verify(expenseLockClient).releaseClaim(anyLong());
+        assertRollbackReleaseRecorded();
     }
 
     @Test
@@ -126,7 +143,7 @@ abstract class AbstractClaimWorkflowIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertThat(claimRepository.count()).isZero();
-        verify(expenseLockClient).releaseClaim(anyLong());
+        assertRollbackReleaseRecorded();
     }
 
     @Test
@@ -155,19 +172,52 @@ abstract class AbstractClaimWorkflowIntegrationTest {
         mockMvc.perform(delete("/claims/" + deleted).header(HttpHeaders.AUTHORIZATION, TestJwt.bearer(OWNER, "EMPLOYEE")))
                 .andExpect(status().isNoContent());
 
-        verify(expenseLockClient).releaseClaim(rejected);
-        verify(expenseLockClient).releaseClaim(deleted);
-        verify(expenseLockClient, never()).releaseClaim(approved);
+        assertThat(outboxEventRepository.findAllByClaimIdOrderById(rejected))
+                .singleElement().extracting(OutboxEvent::getEventType).isEqualTo(OutboxEventType.CLAIM_REJECTED);
+        assertThat(outboxEventRepository.findAllByClaimIdOrderById(deleted))
+                .singleElement().extracting(OutboxEvent::getEventType).isEqualTo(OutboxEventType.CLAIM_DELETED);
+        assertThat(outboxEventRepository.findAllByClaimIdOrderById(approved)).isEmpty();
+        // Delivery is asynchronous (driven directly in the outbox suite); nothing is sent inside the request.
+        verify(expenseLockClient, never()).releaseClaim(anyLong());
     }
 
     @Test
-    void failedReleaseAfterRejectionKeepsTheCommittedRejection() throws Exception {
-        long id = storedClaim("F");
+    void rejectionCommitsWithItsOutboxEventEvenWhileExpenseServiceIsDown() throws Exception {
+        long id = storedClaim("F", 4L, 5L);
         doThrow(new DependencyUnavailableException("down", null)).when(expenseLockClient).releaseClaim(id);
 
         mockMvc.perform(post("/claims/" + id + "/reject").header(HttpHeaders.AUTHORIZATION, TestJwt.bearer(1, "ADMIN")))
                 .andExpect(status().isOk());
         assertThat(claimRepository.findById(id).orElseThrow().getStatus()).isEqualTo("REJECTED");
+        OutboxEvent event = outboxEventRepository.findAllByClaimIdOrderById(id).get(0);
+        assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
+        assertThat(event.expenseIdList()).containsExactly(4L, 5L);
+    }
+
+    @Test
+    void rolledBackRejectionOrDeletionLeavesNoOutboxEvent() {
+        long rejected = storedClaim("RB1");
+        long deleted = storedClaim("RB2");
+
+        assertThatThrownBy(() -> transaction.executeWithoutResult(status -> {
+            claimService.rejectClaim(rejected, ADMIN);
+            claimService.deleteClaim(deleted, new CurrentUser(OWNER, false));
+            throw new IllegalStateException("simulated failure before commit");
+        })).isInstanceOf(IllegalStateException.class);
+
+        assertThat(claimRepository.findById(rejected).orElseThrow().getStatus()).isEqualTo("SUBMITTED");
+        assertThat(claimRepository.findById(deleted)).isPresent();
+        assertThat(outboxEventRepository.count()).isZero();
+    }
+
+    private void assertRollbackReleaseRecorded() {
+        assertThat(outboxEventRepository.findAll()).singleElement().satisfies(event -> {
+            assertThat(event.getEventType()).isEqualTo(OutboxEventType.CLAIM_CREATION_ROLLED_BACK);
+            assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
+            assertThat(event.expenseIdList()).containsExactly(1L, 2L);
+            assertThat(event.getNextAttemptAt()).as("delayed past the lock call's timeout").isAfter(event.getCreatedAt());
+        });
+        verify(expenseLockClient, never()).releaseClaim(anyLong());
     }
 
     @Test
