@@ -7,11 +7,15 @@ import com.btc.userservice.entity.User;
 import com.btc.userservice.exception.InvalidCredentialsException;
 import com.btc.userservice.repository.UserRepository;
 import com.btc.userservice.service.AuthenticationService;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Base64;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -22,6 +26,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtEncoder jwtEncoder;
+
+    @Value("${btc.security.jwt.issuer}")
+    private String issuer;
 
     @Override
     public AuthResponseDto login(AuthLoginRequestDto requestDto) {
@@ -49,28 +57,19 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     private String generateToken(AuthUserDto user) {
-        long expiresAt = Instant.now().getEpochSecond() + TOKEN_EXPIRY_SECONDS;
-        String header = encode("{\"alg\":\"none\",\"typ\":\"JWT\"}");
-        String payload = encode(String.format(
-                "{\"sub\":%d,\"name\":\"%s\",\"email\":\"%s\",\"role\":\"%s\",\"department\":\"%s\",\"exp\":%d}",
-                user.getId(),
-                escapeJson(user.getName()),
-                escapeJson(user.getEmail()),
-                escapeJson(user.getRole()),
-                escapeJson(user.getDepartment()),
-                expiresAt
-        ));
+        Instant issuedAt = Instant.now();
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer(issuer)
+                .subject(String.valueOf(user.getId()))
+                .issuedAt(issuedAt)
+                .expiresAt(issuedAt.plusSeconds(TOKEN_EXPIRY_SECONDS))
+                .claim("name", user.getName())
+                .claim("email", user.getEmail())
+                .claim("role", user.getRole())
+                .claim("department", user.getDepartment())
+                .build();
 
-        return header + "." + payload + ".signature";
-    }
-
-    private String encode(String value) {
-        return Base64.getUrlEncoder()
-                .withoutPadding()
-                .encodeToString(value.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private String escapeJson(String value) {
-        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+        return jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+                .getTokenValue();
     }
 }

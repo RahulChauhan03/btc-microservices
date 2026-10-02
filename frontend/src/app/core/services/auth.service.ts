@@ -70,8 +70,25 @@ export class AuthService {
       return;
     }
 
+    if (this.isTokenExpired(storedToken)) {
+      this.clearStorage(localStorage);
+      this.clearStorage(sessionStorage);
+      return;
+    }
+
     this.tokenSignal.set(storedToken);
     this.userSignal.set(storedUser ? (JSON.parse(storedUser) as AuthUser) : this.getUserFromToken(storedToken));
+  }
+
+  /** Treats tokens without a readable numeric `exp` claim as expired. Signature is verified server-side. */
+  private isTokenExpired(token: string): boolean {
+    try {
+      const base64 = (token.split('.')[1] ?? '').replace(/-/g, '+').replace(/_/g, '/');
+      const exp = Number(JSON.parse(atob(base64)).exp);
+      return !Number.isFinite(exp) || exp * 1000 <= Date.now();
+    } catch {
+      return true;
+    }
   }
 
   private persistSession(response: AuthResponse, rememberMe: boolean): void {
