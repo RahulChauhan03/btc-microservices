@@ -22,5 +22,8 @@ public class ExpenseResponseDto {
     private BigDecimal amount;
     private String category;
     private LocalDate expenseDate;
+    private Long tripId;
+    private Long ownerId;
+    private Long claimId;
     private LocalDateTime createdAt;
 }

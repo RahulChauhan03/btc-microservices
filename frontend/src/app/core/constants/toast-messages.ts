@@ -20,6 +20,8 @@ export const TOAST_MESSAGES = {
     created: 'Claim submitted successfully.',
     updated: 'Claim updated successfully.',
     deleted: 'Claim deleted successfully.',
+    approved: 'Claim approved.',
+    rejected: 'Claim rejected.',
     viewed: (claim: Claim) => `${claim.claimNumber}: ${claim.status} for ${claim.claimAmount}.`,
   },
   users: {

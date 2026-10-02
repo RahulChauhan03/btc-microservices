@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,7 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "trips")
+@Table(name = "trips", indexes = @Index(name = "idx_trips_owner_id", columnList = "owner_id"))
 @Getter
 @Setter
 @Builder
@@ -44,4 +45,8 @@ public class Trip {
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal budget;
+
+    /** Owning user id (users.id in user-service). Null only for rows created before ownership existed. */
+    @Column(name = "owner_id")
+    private Long ownerId;
 }

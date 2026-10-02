@@ -49,9 +49,7 @@ export class UserManagementComponent {
   readonly editingUserId = signal<number | null>(null);
   readonly isFormPage = signal(false);
   readonly roleOptions: { value: UserRole; label: string }[] = [
-    { value: 'SUPER_ADMIN', label: 'Super Admin' },
     { value: 'ADMIN', label: 'Admin' },
-    { value: 'PROJECT_MANAGER', label: 'Project Manager' },
     { value: 'EMPLOYEE', label: 'Employee' },
   ];
   readonly tableColumns: DataTableColumn<User>[] = [

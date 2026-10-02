@@ -11,10 +11,12 @@ import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TOAST_MESSAGES } from '../../../../core/constants/toast-messages';
-import { Expense, ExpensePayload } from '../../../../core/models/domain.models';
+import { Expense, ExpensePayload, Trip } from '../../../../core/models/domain.models';
+import { AuthService } from '../../../../core/services/auth.service';
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
 import { ExpenseService } from '../../../../core/services/expense.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { TripService } from '../../../../core/services/trip.service';
 import {
   DataTableAction,
   DataTableColumn,
@@ -44,6 +46,8 @@ import { DatepickerHeaderComponent } from '../../../../shared/components/datepic
 export class ExpenseManagementComponent {
   private readonly fb = inject(FormBuilder);
   private readonly expenseService = inject(ExpenseService);
+  private readonly tripService = inject(TripService);
+  private readonly authService = inject(AuthService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly toastService = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
@@ -51,6 +55,8 @@ export class ExpenseManagementComponent {
   readonly calendarHeaderComponent = DatepickerHeaderComponent;
 
   readonly expenses = signal<Expense[]>([]);
+  /** The caller's own trips: an expense can only be linked to one of these (enforced by the backend). */
+  readonly ownTrips = signal<Trip[]>([]);
   readonly editingExpenseId = signal<number | null>(null);
   readonly isFormPage = signal(false);
   readonly totalExpenses = computed(() =>
@@ -64,8 +70,21 @@ export class ExpenseManagementComponent {
     { key: 'description', header: 'Description' },
   ];
   readonly tableActions: DataTableAction<Expense>[] = [
-    { id: 'edit', label: 'Edit', icon: 'edit', handler: (expense) => this.editExpense(expense) },
-    { id: 'delete', label: 'Delete', icon: 'delete', handler: (expense) => this.deleteExpense(expense) },
+    // Only owners may change an expense, and not while a claim covers it. The backend enforces both.
+    {
+      id: 'edit',
+      label: 'Edit',
+      icon: 'edit',
+      handler: (expense) => this.editExpense(expense),
+      visible: (expense) => this.isMine(expense) && expense.claimId === null,
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: 'delete',
+      handler: (expense) => this.deleteExpense(expense),
+      visible: (expense) => this.isMine(expense) && expense.claimId === null,
+    },
   ];
 
   readonly expenseForm = this.fb.nonNullable.group({
@@ -74,6 +93,7 @@ export class ExpenseManagementComponent {
     amount: [0, [Validators.required, Validators.min(1)]],
     expenseDate: ['' as string | Date, Validators.required],
     description: ['', [Validators.required, Validators.minLength(5)]],
+    tripId: [null as number | null],
   });
 
   constructor() {
@@ -99,6 +119,7 @@ export class ExpenseManagementComponent {
       amount: formValue.amount,
       expenseDate: this.toDateString(formValue.expenseDate),
       description: formValue.description,
+      tripId: formValue.tripId,
     };
     const onSaved = () => {
       this.toastService.success(
@@ -115,6 +136,10 @@ export class ExpenseManagementComponent {
     }
 
     this.expenseService.createExpense(payload, onSaved);
+  }
+
+  private isMine(expense: Expense): boolean {
+    return expense.ownerId !== null && expense.ownerId === this.authService.currentUser()?.id;
   }
 
   editExpense(expense: Expense): void {
@@ -137,6 +162,7 @@ export class ExpenseManagementComponent {
       amount: expense.amount,
       expenseDate: this.toDate(expense.expenseDate) ?? '',
       description: expense.description,
+      tripId: expense.tripId,
     });
   }
 
@@ -173,6 +199,7 @@ export class ExpenseManagementComponent {
       amount: 0,
       expenseDate: '',
       description: '',
+      tripId: null,
     });
   }
 
@@ -183,6 +210,10 @@ export class ExpenseManagementComponent {
         this.patchEditingExpense();
       },
       () => this.expenses.set([]),
+    );
+    this.tripService.getTrips(
+      (trips) => this.ownTrips.set(trips.filter((trip) => trip.ownerId === this.authService.currentUser()?.id)),
+      () => this.ownTrips.set([]),
     );
   }
 

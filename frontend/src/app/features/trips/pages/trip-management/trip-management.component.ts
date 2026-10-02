@@ -14,6 +14,7 @@ import { TOAST_MESSAGES } from '../../../../core/constants/toast-messages';
 import { Trip, TripPayload } from '../../../../core/models/domain.models';
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { TripService } from '../../../../core/services/trip.service';
 import {
   DataTableAction,
@@ -43,6 +44,7 @@ import { DatepickerHeaderComponent } from '../../../../shared/components/datepic
 export class TripManagementComponent {
   private readonly fb = inject(FormBuilder);
   private readonly tripService = inject(TripService);
+  private readonly authService = inject(AuthService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly toastService = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
@@ -61,8 +63,21 @@ export class TripManagementComponent {
     { key: 'status', header: 'Status', type: 'chip' },
   ];
   readonly tableActions: DataTableAction<Trip>[] = [
-    { id: 'edit', label: 'Edit', icon: 'edit', handler: (trip) => this.editTrip(trip) },
-    { id: 'delete', label: 'Delete', icon: 'delete', handler: (trip) => this.deleteTrip(trip) },
+    // Only owners may change a trip (administrators can view all). The backend enforces this too.
+    {
+      id: 'edit',
+      label: 'Edit',
+      icon: 'edit',
+      handler: (trip) => this.editTrip(trip),
+      visible: (trip) => this.isMine(trip),
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: 'delete',
+      handler: (trip) => this.deleteTrip(trip),
+      visible: (trip) => this.isMine(trip),
+    },
   ];
 
   readonly tripForm = this.fb.nonNullable.group({
@@ -122,6 +137,10 @@ export class TripManagementComponent {
     }
 
     this.tripService.createTrip(payload, onSaved);
+  }
+
+  private isMine(trip: Trip): boolean {
+    return trip.ownerId !== null && trip.ownerId === this.authService.currentUser()?.id;
   }
 
   editTrip(trip: Trip): void {

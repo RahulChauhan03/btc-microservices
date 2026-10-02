@@ -2,6 +2,7 @@ package com.btc.userservice.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,4 +29,8 @@ public class UserRequestDto {
 
     @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
+
+    /** Optional. Applied only when an administrator creates or updates another user; ignored otherwise. */
+    @Pattern(regexp = "ADMIN|EMPLOYEE", message = "Role must be ADMIN or EMPLOYEE")
+    private String role;
 }

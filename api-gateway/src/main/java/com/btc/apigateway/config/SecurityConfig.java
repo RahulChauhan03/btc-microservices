@@ -39,6 +39,8 @@ public class SecurityConfig {
                 // CORS runs before authentication: valid preflights are answered here, and 401s carry CORS headers.
                 .cors(Customizer.withDefaults())
                 .authorizeExchange(exchange -> exchange
+                        // Service-to-service APIs are never routed from outside.
+                        .pathMatchers("/*/internal/**").denyAll()
                         .pathMatchers(HttpMethod.POST, "/auth/login").permitAll()
                         .pathMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                         .pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/webjars/**", "/v3/api-docs/**",
@@ -72,6 +74,7 @@ public class SecurityConfig {
         config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+        config.setExposedHeaders(List.of("X-Total-Count"));
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

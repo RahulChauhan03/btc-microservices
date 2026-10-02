@@ -79,6 +79,16 @@
             <mat-label>Description</mat-label>
             <input matInput formControlName="description" />
           </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Trip (optional)</mat-label>
+            <mat-select formControlName="tripId">
+              <mat-option [value]="null">No trip</mat-option>
+              @for (trip of ownTrips(); track trip.id) {
+                <mat-option [value]="trip.id">{{ trip.tripCode }} · {{ trip.destination }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
         </div>
 
         <div class="action-row">

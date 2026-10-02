@@ -58,18 +58,21 @@
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Amount</mat-label>
-            <input matInput type="number" formControlName="claimAmount" />
+            <mat-label>Expenses</mat-label>
+            <mat-select formControlName="expenseIds" multiple>
+              @for (expense of ownExpenses(); track expense.id) {
+                <mat-option [value]="expense.id">
+                  {{ expense.title }} · {{ expense.expenseDate }} · {{ expense.amount | currency: 'USD' }}
+                </mat-option>
+              }
+            </mat-select>
+            <mat-hint>Expenses must belong to the same trip. Status is set by review.</mat-hint>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Status</mat-label>
-            <mat-select formControlName="status">
-              <mat-option value="PENDING">Pending</mat-option>
-              <mat-option value="SUBMITTED">Submitted</mat-option>
-              <mat-option value="APPROVED">Approved</mat-option>
-              <mat-option value="REJECTED">Rejected</mat-option>
-            </mat-select>
+            <mat-label>Claim total</mat-label>
+            <input matInput [value]="selectedTotal() | currency: 'USD'" readonly />
+            <mat-hint>Calculated from the selected expenses</mat-hint>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="comment-field">

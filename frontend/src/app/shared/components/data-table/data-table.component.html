@@ -30,17 +30,19 @@
         <td mat-cell *matCellDef="let row" class="actions-column">
           <div class="row-actions">
             @for (action of actions; track action.id) {
-              <button
-                mat-stroked-button
-                type="button"
-                class="row-action"
-                [class.danger-action]="action.id === 'delete'"
-                [attr.aria-label]="action.label"
-                (click)="runAction(action, row)"
-              >
-                <mat-icon>{{ action.icon }}</mat-icon>
-                <span>{{ action.label }}</span>
-              </button>
+              @if (!action.visible || action.visible(row)) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="row-action"
+                  [class.danger-action]="action.id === 'delete'"
+                  [attr.aria-label]="action.label"
+                  (click)="runAction(action, row)"
+                >
+                  <mat-icon>{{ action.icon }}</mat-icon>
+                  <span>{{ action.label }}</span>
+                </button>
+              }
             }
           </div>
         </td>

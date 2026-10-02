@@ -2,17 +2,19 @@ package com.btc.tripservice.service;
 
 import com.btc.tripservice.dto.TripRequestDto;
 import com.btc.tripservice.dto.TripResponseDto;
-import java.util.List;
+import com.btc.tripservice.security.CurrentUser;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface TripService {
 
-    TripResponseDto createTrip(TripRequestDto requestDto);
+    TripResponseDto createTrip(TripRequestDto requestDto, CurrentUser actor);
 
-    TripResponseDto getTripById(Long id);
+    TripResponseDto getTripById(Long id, CurrentUser actor);
 
-    List<TripResponseDto> getAllTrips();
+    Page<TripResponseDto> getAllTrips(CurrentUser actor, Pageable pageable);
 
-    TripResponseDto updateTrip(Long id, TripRequestDto requestDto);
+    TripResponseDto updateTrip(Long id, TripRequestDto requestDto, CurrentUser actor);
 
-    void deleteTrip(Long id);
+    void deleteTrip(Long id, CurrentUser actor);
 }

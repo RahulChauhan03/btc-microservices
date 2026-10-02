@@ -2,17 +2,20 @@ package com.btc.expenseservice.service;
 
 import com.btc.expenseservice.dto.ExpenseRequestDto;
 import com.btc.expenseservice.dto.ExpenseResponseDto;
-import java.util.List;
+import com.btc.expenseservice.security.CurrentUser;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface ExpenseService {
 
-    ExpenseResponseDto createExpense(ExpenseRequestDto requestDto);
+    ExpenseResponseDto createExpense(ExpenseRequestDto requestDto, CurrentUser actor);
 
-    ExpenseResponseDto getExpenseById(Long id);
+    ExpenseResponseDto getExpenseById(Long id, CurrentUser actor);
 
-    List<ExpenseResponseDto> getAllExpenses();
+    /** Lists visible expenses, optionally only those on {@code tripId}. */
+    Page<ExpenseResponseDto> getAllExpenses(CurrentUser actor, Long tripId, Pageable pageable);
 
-    ExpenseResponseDto updateExpense(Long id, ExpenseRequestDto requestDto);
+    ExpenseResponseDto updateExpense(Long id, ExpenseRequestDto requestDto, CurrentUser actor);
 
-    void deleteExpense(Long id);
+    void deleteExpense(Long id, CurrentUser actor);
 }

@@ -1,5 +1,6 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -10,9 +11,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TOAST_MESSAGES } from '../../../../core/constants/toast-messages';
-import { Claim, ClaimPayload } from '../../../../core/models/domain.models';
+import { Claim, ClaimPayload, Expense } from '../../../../core/models/domain.models';
+import { AuthService } from '../../../../core/services/auth.service';
 import { ClaimService } from '../../../../core/services/claim.service';
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
+import { ExpenseService } from '../../../../core/services/expense.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import {
   DataTableAction,
@@ -24,6 +27,7 @@ import {
   selector: 'app-claim-management',
   imports: [
     CommonModule,
+    CurrencyPipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatCardModule,
@@ -40,17 +44,19 @@ import {
 export class ClaimManagementComponent {
   private readonly fb = inject(FormBuilder);
   private readonly claimService = inject(ClaimService);
+  private readonly expenseService = inject(ExpenseService);
+  private readonly authService = inject(AuthService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly toastService = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
   readonly claims = signal<Claim[]>([]);
+  /** The caller's own expenses: a claim can only cover these (enforced by the backend). */
+  readonly ownExpenses = signal<Expense[]>([]);
   readonly editingClaimId = signal<number | null>(null);
   readonly isFormPage = signal(false);
-  readonly pendingClaims = computed(
-    () => this.claims().filter((claim) => ['SUBMITTED', 'PENDING'].includes(claim.status)).length,
-  );
+  readonly pendingClaims = computed(() => this.claims().filter((claim) => this.isAwaitingReview(claim)).length);
   readonly tableColumns: DataTableColumn<Claim>[] = [
     { key: 'claimNumber', header: 'Claim' },
     { key: 'title', header: 'Title' },
@@ -59,18 +65,54 @@ export class ClaimManagementComponent {
     { key: 'status', header: 'Status', type: 'chip' },
     { key: 'description', header: 'Description' },
   ];
+  // Visibility mirrors the backend rules for a better UX; claim-service enforces them independently.
   readonly tableActions: DataTableAction<Claim>[] = [
-    { id: 'edit', label: 'Edit', icon: 'edit', handler: (claim) => this.editClaim(claim) },
-    { id: 'delete', label: 'Delete', icon: 'delete', handler: (claim) => this.deleteClaim(claim) },
+    {
+      id: 'edit',
+      label: 'Edit',
+      icon: 'edit',
+      handler: (claim) => this.editClaim(claim),
+      visible: (claim) => this.isMine(claim) && this.isAwaitingReview(claim),
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: 'delete',
+      handler: (claim) => this.deleteClaim(claim),
+      visible: (claim) => this.isMine(claim) && this.isAwaitingReview(claim),
+    },
+    {
+      id: 'approve',
+      label: 'Approve',
+      icon: 'check_circle',
+      handler: (claim) => this.reviewClaim(claim, true),
+      visible: (claim) => this.canReview(claim),
+    },
+    {
+      id: 'reject',
+      label: 'Reject',
+      icon: 'cancel',
+      handler: (claim) => this.reviewClaim(claim, false),
+      visible: (claim) => this.canReview(claim),
+    },
   ];
 
   readonly claimForm = this.fb.nonNullable.group({
     claimNumber: ['', [Validators.required, Validators.minLength(3)]],
     title: ['', [Validators.required, Validators.minLength(3)]],
-    claimAmount: [0, [Validators.required, Validators.min(1)]],
-    status: ['PENDING' as Claim['status'], Validators.required],
+    expenseIds: [[] as number[], Validators.required],
     description: ['', [Validators.required, Validators.minLength(5)]],
   });
+
+  private readonly selectedExpenseIds = toSignal(this.claimForm.controls.expenseIds.valueChanges, {
+    initialValue: [] as number[],
+  });
+  /** Preview only; the backend calculates the claim amount from the linked expenses. */
+  readonly selectedTotal = computed(() =>
+    this.ownExpenses()
+      .filter((expense) => this.selectedExpenseIds().includes(expense.id))
+      .reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0),
+  );
 
   constructor() {
     this.route.paramMap.subscribe((params) => {
@@ -88,7 +130,7 @@ export class ClaimManagementComponent {
       return;
     }
 
-    const payload = this.claimForm.getRawValue() as ClaimPayload;
+    const payload: ClaimPayload = this.claimForm.getRawValue();
     const onSaved = () => {
       this.toastService.success(this.editingClaimId() ? TOAST_MESSAGES.claims.updated : TOAST_MESSAGES.claims.created);
       this.resetForm();
@@ -121,8 +163,7 @@ export class ClaimManagementComponent {
     this.claimForm.patchValue({
       claimNumber: claim.claimNumber,
       title: claim.title,
-      claimAmount: claim.claimAmount,
-      status: claim.status,
+      expenseIds: claim.expenseIds ?? [],
       description: claim.description ?? '',
     });
   }
@@ -154,7 +195,36 @@ export class ClaimManagementComponent {
   }
 
   resetForm(): void {
-    this.claimForm.reset({ claimNumber: '', title: '', claimAmount: 0, status: 'PENDING', description: '' });
+    this.claimForm.reset({ claimNumber: '', title: '', expenseIds: [], description: '' });
+  }
+
+  private reviewClaim(claim: Claim, approve: boolean): void {
+    const onReviewed = () => {
+      this.toastService.success(approve ? TOAST_MESSAGES.claims.approved : TOAST_MESSAGES.claims.rejected);
+      this.loadData();
+    };
+    if (approve) {
+      this.claimService.approveClaim(claim.id, onReviewed);
+      return;
+    }
+    this.claimService.rejectClaim(claim.id, onReviewed);
+  }
+
+  private isMine(claim: Claim): boolean {
+    return claim.ownerId !== null && claim.ownerId === this.authService.currentUser()?.id;
+  }
+
+  private isAwaitingReview(claim: Claim): boolean {
+    return claim.status === 'SUBMITTED' || claim.status === 'PENDING';
+  }
+
+  private canReview(claim: Claim): boolean {
+    return (
+      this.authService.hasRole('ADMIN') &&
+      !this.isMine(claim) &&
+      this.isAwaitingReview(claim) &&
+      (claim.expenseIds?.length ?? 0) > 0
+    );
   }
 
   private loadData(): void {
@@ -164,6 +234,18 @@ export class ClaimManagementComponent {
         this.patchEditingClaim();
       },
       () => this.claims.set([]),
+    );
+    this.expenseService.getExpenses(
+      (expenses) =>
+        this.ownExpenses.set(
+          // Offer only expenses that are free, or already part of the claim being edited.
+          expenses.filter(
+            (expense) =>
+              expense.ownerId === this.authService.currentUser()?.id &&
+              (expense.claimId === null || expense.claimId === this.editingClaimId()),
+          ),
+        ),
+      () => this.ownExpenses.set([]),
     );
   }
 }

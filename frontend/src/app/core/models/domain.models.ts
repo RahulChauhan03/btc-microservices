@@ -1,6 +1,8 @@
-export type ClaimStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUBMITTED';
+/** SUBMITTED and the legacy PENDING await review; APPROVED and REJECTED are final. */
+export type ClaimStatus = 'PENDING' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
 export type TripStatus = 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'PROJECT_MANAGER' | 'EMPLOYEE';
+/** Must match the backend Role enum (user-service). */
+export type UserRole = 'ADMIN' | 'EMPLOYEE';
 
 export interface DashboardSummary {
   activeTrips: number;
@@ -22,6 +24,7 @@ export interface UserPayload {
   name: string;
   email: string;
   phone: string;
+  /** Applied by the backend only when an administrator edits another user. */
   role: UserRole;
   password?: string;
 }
@@ -34,6 +37,8 @@ export interface Trip {
   endDate: string;
   budget: number;
   status: TripStatus;
+  /** Null for records created before ownership existed (visible to administrators only). */
+  ownerId: number | null;
 }
 
 export interface TripPayload {
@@ -53,6 +58,10 @@ export interface Expense {
   expenseDate: string;
   description: string;
   createdAt: string;
+  tripId: number | null;
+  ownerId: number | null;
+  /** Claim currently covering this expense; while set, the backend refuses edits and deletes. */
+  claimId: number | null;
 }
 
 export interface ExpensePayload {
@@ -61,6 +70,7 @@ export interface ExpensePayload {
   amount: number;
   expenseDate: string;
   description: string;
+  tripId?: number | null;
 }
 
 export interface Claim {
@@ -68,15 +78,21 @@ export interface Claim {
   claimNumber: string;
   title: string;
   description?: string;
+  /** Calculated by the backend from the linked expenses. */
   claimAmount: number;
   submittedAt: string;
   status: ClaimStatus;
+  ownerId: number | null;
+  tripId: number | null;
+  expenseIds: number[];
+  reviewedBy: number | null;
+  reviewedAt: string | null;
 }
 
+/** Amount, status, owner and reviewer are decided by the backend and are not sent. */
 export interface ClaimPayload {
   claimNumber: string;
   title: string;
   description?: string;
-  claimAmount: number;
-  status: ClaimStatus;
+  expenseIds: number[];
 }

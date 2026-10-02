@@ -15,6 +15,7 @@ import com.btc.userservice.service.UserService;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.data.domain.Page;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,7 +66,7 @@ class UserServiceSecurityTests {
 
     @Test
     void validTokenIsAccepted() throws Exception {
-        when(userService.getAllUsers()).thenReturn(List.of());
+        when(userService.getAllUsers(any(), any())).thenReturn(Page.empty());
 
         mockMvc.perform(get("/users").header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken()))
                 .andExpect(status().isOk());

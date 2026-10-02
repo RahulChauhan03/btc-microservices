@@ -24,6 +24,8 @@ export interface DataTableAction<T = any> {
   label: string;
   icon: string;
   handler?: (row: T) => void;
+  /** Hides the action for rows where it does not apply. UX only: the backend enforces the rules. */
+  visible?: (row: T) => boolean;
 }
 
 export interface DataTableFilterOption {

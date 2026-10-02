@@ -2,17 +2,19 @@ package com.btc.userservice.service;
 
 import com.btc.userservice.dto.UserRequestDto;
 import com.btc.userservice.dto.UserResponseDto;
-import java.util.List;
+import com.btc.userservice.security.CurrentUser;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface UserService {
 
-    UserResponseDto createUser(UserRequestDto requestDto);
+    UserResponseDto createUser(UserRequestDto requestDto, CurrentUser actor);
 
-    UserResponseDto getUserById(Long id);
+    UserResponseDto getUserById(Long id, CurrentUser actor);
 
-    List<UserResponseDto> getAllUsers();
+    Page<UserResponseDto> getAllUsers(CurrentUser actor, Pageable pageable);
 
-    UserResponseDto updateUser(Long id, UserRequestDto requestDto);
+    UserResponseDto updateUser(Long id, UserRequestDto requestDto, CurrentUser actor);
 
-    void deleteUser(Long id);
+    void deleteUser(Long id, CurrentUser actor);
 }

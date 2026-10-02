@@ -1,5 +1,6 @@
 package com.btc.claimservice.config;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -11,6 +12,7 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.data.domain.Page;
 import java.util.UUID;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
@@ -61,7 +63,7 @@ class ClaimServiceSecurityTests {
 
     @Test
     void validTokenIsAccepted() throws Exception {
-        when(claimService.getAllClaims()).thenReturn(List.of());
+        when(claimService.getAllClaims(any(), any())).thenReturn(Page.empty());
 
         mockMvc.perform(get("/claims").header(HttpHeaders.AUTHORIZATION, "Bearer " + token(SECRET, Instant.now().plusSeconds(600))))
                 .andExpect(status().isOk());

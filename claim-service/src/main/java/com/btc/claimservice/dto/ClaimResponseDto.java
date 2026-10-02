@@ -2,6 +2,7 @@ package com.btc.claimservice.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,4 +23,9 @@ public class ClaimResponseDto {
     private BigDecimal claimAmount;
     private String status;
     private LocalDateTime submittedAt;
+    private Long ownerId;
+    private Long tripId;
+    private List<Long> expenseIds;
+    private Long reviewedBy;
+    private LocalDateTime reviewedAt;
 }

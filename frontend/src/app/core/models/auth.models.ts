@@ -7,7 +7,7 @@ export interface AuthUser {
   id: number;
   name: string;
   email: string;
-  role: 'ADMIN' | 'EMPLOYEE' | 'MANAGER';
+  role: 'ADMIN' | 'EMPLOYEE';
   department?: string;
 }
 

@@ -22,4 +22,5 @@ public class TripResponseDto {
     private LocalDate endDate;
     private String status;
     private BigDecimal budget;
+    private Long ownerId;
 }

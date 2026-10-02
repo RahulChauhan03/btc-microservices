@@ -145,6 +145,23 @@ class GatewaySecurityTests {
         }
     }
 
+    @Test
+    void internalServiceApisAreNeverRoutedFromOutside() {
+        String token = bearer(token(SECRET, ISSUER, Instant.now().plusSeconds(600)));
+        webTestClient.put().uri("/expenses/internal/claims/1/locks").header(HttpHeaders.AUTHORIZATION, token)
+                .exchange().expectStatus().isForbidden();
+        webTestClient.delete().uri("/expenses/internal/claims/1/locks").exchange().expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void totalCountHeaderIsReadableByTheBrowser() {
+        webTestClient.get().uri("/trips")
+                .header(HttpHeaders.ORIGIN, ALLOWED_ORIGIN)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(SECRET, ISSUER, Instant.now().plusSeconds(600))))
+                .exchange()
+                .expectHeader().valueEquals(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "X-Total-Count");
+    }
+
     private void assertRejected(String token) {
         webTestClient.get().uri("/trips")
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
