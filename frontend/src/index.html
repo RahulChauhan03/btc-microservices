@@ -6,6 +6,24 @@
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0b1f3a" />
+    <script>
+      (() => {
+        let theme = null;
+        try {
+          theme = localStorage.getItem('btc-flow-theme');
+        } catch {
+          // Continue with the system preference when storage is unavailable.
+        }
+        if (theme !== 'light' && theme !== 'dark') {
+          theme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+        if (theme === 'dark') {
+          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#0f1117');
+        }
+      })();
+    </script>
     <!-- Never send page paths (e.g. a password-reset link) to other origins such as the icon font host. -->
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta

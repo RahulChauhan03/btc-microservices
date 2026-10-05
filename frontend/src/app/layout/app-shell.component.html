@@ -87,6 +87,18 @@
           <mat-icon>manage_accounts</mat-icon>
           <span>Profile &amp; settings</span>
         </a>
+        <button
+          mat-menu-item
+          type="button"
+          class="theme-menu-row"
+          (click)="toggleTheme()"
+          [attr.aria-pressed]="theme.isDark()"
+          aria-label="Toggle dark mode"
+        >
+          <mat-icon aria-hidden="true">dark_mode</mat-icon>
+          <span>Dark mode</span>
+          <mat-icon class="theme-switch-icon" aria-hidden="true">{{ theme.isDark() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+        </button>
         <button mat-menu-item type="button" (click)="logout()">
           <mat-icon>logout</mat-icon>
           <span>Sign out</span>

@@ -38,36 +38,23 @@
         </div>
       }
       @default {
-        @if (rows().length) {
-          <div class="table-responsive">
-            <table class="simple-table">
-              <thead>
-                <tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Joined</th></tr>
-              </thead>
-              <tbody>
-                @for (user of rows(); track user.id) {
-                  <tr>
-                    <td><a class="text-link" [routerLink]="['/employees', user.id]">{{ user.name }}</a></td>
-                    <td>{{ user.email }}</td>
-                    <td><span [class]="'status-badge status-' + user.role.toLowerCase()">{{ roleLabel(user.role) }}</span></td>
-                    <td>{{ user.createdAt | date: 'mediumDate' }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          <div class="pager">
-            <span>{{ total() }} people · page {{ page() + 1 }} of {{ pages() }}</span>
-            <button mat-stroked-button type="button" (click)="load(page() - 1)" [disabled]="page() === 0">Previous</button>
-            <button mat-stroked-button type="button" (click)="load(page() + 1)" [disabled]="page() + 1 >= pages()">Next</button>
-          </div>
-        } @else {
-          <div class="empty-state">
-            <mat-icon aria-hidden="true">person_search</mat-icon>
-            <strong>No matching people</strong>
-            <span>Try a different name, email or role.</span>
-          </div>
-        }
+        <app-data-table
+          title="Employees"
+          [rows]="rows()"
+          [columns]="tableColumns"
+          [showTitle]="false"
+          [showSearch]="false"
+          paginationMode="server"
+          [totalItems]="total()"
+          [pageIndex]="page()"
+          [pageSize]="pageSize()"
+          [loading]="state() === 'loading'"
+          [errorMessage]="state() === 'error' ? 'We couldn’t load the directory.' : null"
+          emptyTitle="No matching people"
+          emptyMessage="Try a different name, email or role."
+          (pageChange)="onTablePageChange($event)"
+          (retry)="load(page(), pageSize())"
+        />
       }
     }
   </section>

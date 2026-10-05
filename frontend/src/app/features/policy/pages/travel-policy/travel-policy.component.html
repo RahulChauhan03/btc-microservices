@@ -110,28 +110,16 @@
       @if (others().length) {
         <article class="section-card">
           <h2>Other policies</h2>
-          <div class="table-responsive">
-            <table class="simple-table">
-              <thead><tr><th scope="col">Name</th><th scope="col">Period</th><th scope="col" class="num">Trip limit</th><th scope="col">Limits</th>@if (isAdmin()) {<th scope="col"><span class="visually-hidden">Actions</span></th>}</tr></thead>
-              <tbody>
-                @for (policy of others(); track policy.id) {
-                  <tr>
-                    <td>{{ policy.name }}</td>
-                    <td>{{ policy.effectiveFrom | date: 'mediumDate' }} – {{ policy.effectiveTo ? (policy.effectiveTo | date: 'mediumDate') : 'open-ended' }}</td>
-                    <td class="num">{{ policy.tripLimit !== null ? (policy.tripLimit | currency: policy.currency) : '—' }}</td>
-                    <td>
-                      @for (limit of policy.categoryLimits | keyvalue; track limit.key) {
-                        <span class="chip">{{ categoryLabel(limit.key) }} {{ limit.value | currency: policy.currency }}</span>
-                      } @empty { — }
-                    </td>
-                    @if (isAdmin()) {
-                      <td><button mat-button type="button" (click)="edit(policy)" [attr.aria-label]="'Edit ' + policy.name">Edit</button></td>
-                    }
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
+          <app-data-table
+            title="Other policies"
+            [rows]="others()"
+            [columns]="tableColumns"
+            [actions]="isAdmin() ? tableActions : []"
+            [showTitle]="false"
+            [showSearch]="false"
+            emptyTitle="No other policies"
+            emptyMessage="Previous and scheduled policy versions appear here."
+          />
         </article>
       }
     }

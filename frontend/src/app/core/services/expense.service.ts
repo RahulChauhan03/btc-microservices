@@ -17,6 +17,10 @@ export class ExpenseService {
     return this.crudHttp.page<Expense>(this.endpoint, params);
   }
 
+  getExpense(id: number): Observable<Expense> {
+    return this.crudHttp.fetch<Expense>(`${this.endpoint}/${id}`);
+  }
+
   /** Totals by category and month, computed by expense-service; params: ownerId, tripId, from, to. */
   getSummary(params: QueryParams = {}): Observable<ExpenseSummary> {
     return this.crudHttp.fetch<ExpenseSummary>(`${this.endpoint}/summary`, params);

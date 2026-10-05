@@ -13,7 +13,7 @@
 
     <section class="metrics-grid">
       <app-stat-card label="Total expenses" [value]="totalExpenses()" icon="payments" format="currency" tone="accent" />
-      <app-stat-card label="Expense records" [value]="expenses().length" icon="receipt_long" />
+      <app-stat-card label="Expense records" [value]="tableTotal()" icon="receipt_long" />
     </section>
 
     <mat-card class="section-card scroll-card table-card">
@@ -23,6 +23,14 @@
         [rows]="expenses()"
         [columns]="tableColumns"
         [actions]="tableActions"
+        paginationMode="server"
+        [totalItems]="tableTotal()"
+        [pageIndex]="tablePage()"
+        [pageSize]="tablePageSize()"
+        [loading]="tableLoading()"
+        [errorMessage]="tableError()"
+        (pageChange)="onTablePageChange($event)"
+        (retry)="loadData(tablePage(), tablePageSize())"
         [showTitle]="false"
         emptyTitle="No expenses yet"
         emptyMessage="Add an expense to start building a claim."

@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -10,14 +11,17 @@ import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TOAST_MESSAGES } from '../../../../core/constants/toast-messages';
+import { describeHttpError } from '../../../../core/http/describe-error';
 import { User, UserPayload, UserRole } from '../../../../core/models/domain.models';
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { UserService } from '../../../../core/services/user.service';
+import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 import {
   DataTableAction,
   DataTableColumn,
   DataTableComponent,
+  DataTablePageChange,
 } from '../../../../shared/components/data-table/data-table.component';
 
 @Component({
@@ -39,6 +43,7 @@ import {
 })
 export class UserManagementComponent {
   private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly userService = inject(UserService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly toastService = inject(ToastService);
@@ -46,8 +51,16 @@ export class UserManagementComponent {
   private readonly router = inject(Router);
 
   readonly users = signal<User[]>([]);
+  readonly tableTotal = signal(0);
+  readonly tablePage = signal(0);
+  readonly tablePageSize = signal(20);
+  readonly tableLoading = signal(false);
+  readonly tableError = signal<string | null>(null);
+  private readonly tableSearch = new Subject<string>();
+  private searchQuery = '';
   readonly editingUserId = signal<number | null>(null);
   readonly isFormPage = signal(false);
+  private requestedEditId: number | null = null;
   readonly roleOptions: { value: UserRole; label: string }[] = [
     { value: 'ADMIN', label: 'Admin' },
     { value: 'EMPLOYEE', label: 'Employee' },
@@ -55,9 +68,9 @@ export class UserManagementComponent {
   readonly tableColumns: DataTableColumn<User>[] = [
     { key: 'name', header: 'Name' },
     { key: 'email', header: 'Email' },
-    { key: 'phone', header: 'Phone' },
+    { key: 'phone', header: 'Phone', mobilePriority: 'secondary' },
     { key: 'role', header: 'Role', type: 'chip' },
-    { key: 'createdAt', header: 'Created', type: 'date' },
+    { key: 'createdAt', header: 'Created', type: 'date', mobilePriority: 'secondary' },
   ];
   readonly tableActions: DataTableAction<User>[] = [
     { id: 'edit', label: 'Edit', icon: 'edit', handler: (user) => this.editUser(user) },
@@ -72,13 +85,21 @@ export class UserManagementComponent {
   });
 
   constructor() {
-    this.route.paramMap.subscribe((params) => {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const id = Number(params.get('id'));
       this.isFormPage.set(this.router.url.includes('/new') || this.router.url.includes('/edit/'));
       this.editingUserId.set(Number.isFinite(id) && id > 0 ? id : null);
       this.patchEditingUser();
     });
-    this.loadUsers();
+    if (!this.isFormPage()) {
+      this.loadUsers(0);
+    }
+    this.tableSearch
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe((query) => {
+        this.searchQuery = query.trim();
+        this.loadUsers(0);
+      });
   }
 
   submit(): void {
@@ -127,10 +148,20 @@ export class UserManagementComponent {
     if (!user) {
       if (this.isFormPage() && !this.editingUserId()) {
         this.resetForm();
+      } else if (this.isFormPage() && this.editingUserId() && this.requestedEditId !== this.editingUserId()) {
+        const id = this.editingUserId()!;
+        this.requestedEditId = id;
+        this.userService.getUser(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+          next: (editingUser) => this.patchForm(editingUser),
+        });
       }
       return;
     }
 
+    this.patchForm(user);
+  }
+
+  private patchForm(user: User): void {
     this.userForm.patchValue({
       name: user.name,
       email: user.email,
@@ -176,10 +207,38 @@ export class UserManagementComponent {
     });
   }
 
-  private loadUsers(): void {
-    this.userService.getUsers((users) => {
-      this.users.set(users);
-      this.patchEditingUser();
-    });
+  loadUsers(page = this.tablePage(), size = this.tablePageSize()): void {
+    this.tableLoading.set(true);
+    this.tableError.set(null);
+    this.userService
+      .listUsers({ q: this.searchQuery, page, size, sort: 'name,asc' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          const lastPage = Math.max(0, Math.ceil(result.total / size) - 1);
+          if (page > lastPage) {
+            this.loadUsers(lastPage, size);
+            return;
+          }
+          this.users.set(result.items);
+          this.tableTotal.set(result.total);
+          this.tablePage.set(page);
+          this.tablePageSize.set(size);
+          this.tableLoading.set(false);
+          this.patchEditingUser();
+        },
+        error: (error: unknown) => {
+          this.tableError.set(describeHttpError(error, 'user service'));
+          this.tableLoading.set(false);
+        },
+      });
+  }
+
+  onTablePageChange(event: DataTablePageChange): void {
+    this.loadUsers(event.pageIndex, event.pageSize);
+  }
+
+  onTableSearchChange(query: string): void {
+    this.tableSearch.next(query);
   }
 }

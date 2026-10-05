@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -11,6 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TOAST_MESSAGES } from '../../../../core/constants/toast-messages';
+import { describeHttpError } from '../../../../core/http/describe-error';
 import { Trip, TripPayload } from '../../../../core/models/domain.models';
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -20,6 +22,7 @@ import {
   DataTableAction,
   DataTableColumn,
   DataTableComponent,
+  DataTablePageChange,
 } from '../../../../shared/components/data-table/data-table.component';
 import { DatepickerHeaderComponent } from '../../../../shared/components/datepicker-header/datepicker-header.component';
 
@@ -43,6 +46,7 @@ import { DatepickerHeaderComponent } from '../../../../shared/components/datepic
 })
 export class TripManagementComponent {
   private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly tripService = inject(TripService);
   private readonly authService = inject(AuthService);
   private readonly confirmationService = inject(ConfirmationService);
@@ -53,13 +57,19 @@ export class TripManagementComponent {
   readonly calendarHeaderComponent = DatepickerHeaderComponent;
 
   readonly trips = signal<Trip[]>([]);
+  readonly tableTotal = signal(0);
+  readonly tablePage = signal(0);
+  readonly tablePageSize = signal(20);
+  readonly tableLoading = signal(false);
+  readonly tableError = signal<string | null>(null);
   readonly editingTripId = signal<number | null>(null);
   readonly isFormPage = signal(false);
+  private requestedEditId: number | null = null;
   readonly tableColumns: DataTableColumn<Trip>[] = [
     { key: 'tripCode', header: 'Trip Code' },
     { key: 'destination', header: 'Destination' },
-    { key: 'dates', header: 'Dates', value: (trip) => `${trip.startDate} - ${trip.endDate}` },
-    { key: 'budget', header: 'Budget', type: 'currency' },
+    { key: 'dates', header: 'Dates', value: (trip) => `${trip.startDate} - ${trip.endDate}`, mobilePriority: 'secondary' },
+    { key: 'budget', header: 'Budget', type: 'currency', mobilePriority: 'secondary' },
     { key: 'status', header: 'Status', type: 'chip' },
   ];
   readonly tableActions: DataTableAction<Trip>[] = [
@@ -102,17 +112,43 @@ export class TripManagementComponent {
       this.editingTripId.set(Number.isFinite(id) && id > 0 ? id : null);
       this.patchEditingTrip();
     });
-    this.loadTrips();
+    if (!this.isFormPage()) {
+      this.loadTrips();
+    }
     this.tripForm.controls.startDate.valueChanges.subscribe(() => {
       this.tripForm.controls.endDate.updateValueAndValidity();
     });
   }
 
-  loadTrips(): void {
-    this.tripService.getTrips((trips) => {
-      this.trips.set(trips);
-      this.patchEditingTrip();
-    });
+  loadTrips(page = this.tablePage(), size = this.tablePageSize()): void {
+    this.tableLoading.set(true);
+    this.tableError.set(null);
+    this.tripService
+      .listTrips({ page, size, sort: 'startDate,desc' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          const lastPage = Math.max(0, Math.ceil(result.total / size) - 1);
+          if (page > lastPage) {
+            this.loadTrips(lastPage, size);
+            return;
+          }
+          this.trips.set(result.items);
+          this.tableTotal.set(result.total);
+          this.tablePage.set(page);
+          this.tablePageSize.set(size);
+          this.tableLoading.set(false);
+          this.patchEditingTrip();
+        },
+        error: (error: unknown) => {
+          this.tableError.set(describeHttpError(error, 'trip service'));
+          this.tableLoading.set(false);
+        },
+      });
+  }
+
+  onTablePageChange(event: DataTablePageChange): void {
+    this.loadTrips(event.pageIndex, event.pageSize);
   }
 
   submit(): void {
@@ -159,10 +195,20 @@ export class TripManagementComponent {
     if (!trip) {
       if (this.isFormPage() && !this.editingTripId()) {
         this.resetForm();
+      } else if (this.isFormPage() && this.editingTripId() && this.requestedEditId !== this.editingTripId()) {
+        const id = this.editingTripId()!;
+        this.requestedEditId = id;
+        this.tripService.getTrip(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+          next: (editingTrip) => this.patchForm(editingTrip),
+        });
       }
       return;
     }
 
+    this.patchForm(trip);
+  }
+
+  private patchForm(trip: Trip): void {
     this.tripForm.patchValue({
       tripCode: trip.tripCode,
       destination: trip.destination,
@@ -194,7 +240,7 @@ export class TripManagementComponent {
         if (this.editingTripId() === trip.id) {
           this.resetForm();
         }
-        this.loadTrips();
+        this.loadTrips(this.tablePage(), this.tablePageSize());
       });
       });
   }

@@ -83,21 +83,16 @@
               <mat-icon aria-hidden="true">cloud_off</mat-icon>{{ claimsError() }}
               <button mat-button type="button" (click)="run()">Retry</button>
             </p>
-          } @else if (claims()?.byStatus?.length) {
-            <table class="simple-table">
-              <thead><tr><th scope="col">Status</th><th scope="col" class="num">Claims</th><th scope="col" class="num">Amount</th></tr></thead>
-              <tbody>
-                @for (row of claims()!.byStatus; track row.status) {
-                  <tr>
-                    <td><span [class]="statusClass(row.status)">{{ label(row.status) }}</span></td>
-                    <td class="num">{{ row.count }}</td>
-                    <td class="num">{{ row.total | currency: 'USD' }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
           } @else {
-            <p class="muted">No claims were submitted in this period.</p>
+            <app-data-table
+              title="Claims by status"
+              [rows]="claims()?.byStatus ?? []"
+              [columns]="statusColumns"
+              [showTitle]="false"
+              [showSearch]="false"
+              emptyTitle="No claims submitted"
+              emptyMessage="No claims were submitted in this period."
+            />
           }
         </article>
       </section>
@@ -107,29 +102,18 @@
         @if (tripsError() || expensesError()) {
           <p class="section-error" role="alert"><mat-icon aria-hidden="true">cloud_off</mat-icon>{{ tripsError() ?? expensesError() }}</p>
         } @else if (tripRows().length) {
-          <div class="table-responsive">
-            <table class="simple-table">
-              <thead>
-                <tr><th scope="col">Trip</th><th scope="col">Destination</th><th scope="col" class="num">Expenses</th><th scope="col" class="num">Spent</th><th scope="col" class="num">Budget</th></tr>
-              </thead>
-              <tbody>
-                @for (row of tripRows(); track row.tripId) {
-                  <tr>
-                    <td><a class="text-link" [routerLink]="['/trips/view', row.tripId]">{{ row.trip?.tripCode ?? 'Trip #' + row.tripId }}</a></td>
-                    <td>{{ row.trip?.destination ?? '—' }}</td>
-                    <td class="num">{{ row.count }}</td>
-                    <td class="num">{{ row.total | currency: 'USD' }}</td>
-                    <td class="num">{{ row.trip ? (row.trip.budget | currency: 'USD') : '—' }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          <div class="pager">
-            <span>Page {{ tripPage() + 1 }} of {{ tripPages() }}</span>
-            <button mat-stroked-button type="button" (click)="loadTrips(tripPage() - 1)" [disabled]="tripPage() === 0">Previous</button>
-            <button mat-stroked-button type="button" (click)="loadTrips(tripPage() + 1)" [disabled]="tripPage() + 1 >= tripPages()">Next</button>
-          </div>
+          <app-data-table
+            title="Spending by trip"
+            [rows]="tripRows()"
+            [columns]="tripColumns"
+            [showTitle]="false"
+            [showSearch]="false"
+            paginationMode="server"
+            [totalItems]="tripTotal()"
+            [pageIndex]="tripPage()"
+            [pageSize]="tripPageSize()"
+            (pageChange)="onTripPageChange($event)"
+          />
         } @else {
           <p class="muted">No trip-related expenses in this period.</p>
         }

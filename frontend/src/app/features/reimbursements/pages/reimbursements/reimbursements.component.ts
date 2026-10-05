@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -15,8 +15,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { ReimbursementService } from '../../../../core/services/reimbursement.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { BtcLoaderComponent } from '../../../../shared/components/btc-loader/btc-loader.component';
-
-const PAGE_SIZE = 20;
+import { DataTableAction, DataTableColumn, DataTableComponent, DataTablePageChange } from '../../../../shared/components/data-table/data-table.component';
 
 /**
  * Reimbursement tracking for approved claims. This records what finance reports; BTC Flow moves no money.
@@ -25,7 +24,7 @@ const PAGE_SIZE = 20;
  */
 @Component({
   selector: 'app-reimbursements',
-  imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, BtcLoaderComponent],
+  imports: [CurrencyPipe, ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, BtcLoaderComponent, DataTableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './reimbursements.component.html',
   styleUrl: './reimbursements.component.css',
@@ -43,11 +42,27 @@ export class ReimbursementsComponent {
   readonly rows = signal<Reimbursement[]>([]);
   readonly total = signal(0);
   readonly page = signal(0);
-  readonly pages = computed(() => Math.max(1, Math.ceil(this.total() / PAGE_SIZE)));
+  readonly pageSize = signal(20);
   readonly editing = signal<Reimbursement | null>(null);
   readonly saving = signal(false);
   readonly formError = signal<string | null>(null);
   readonly loadError = signal('');
+  readonly tableColumns: DataTableColumn<Reimbursement>[] = [
+    { key: 'claimNumber', header: 'Claim' },
+    { key: 'claimTitle', header: 'Claim title', mobilePriority: 'secondary', emptyValue: '—' },
+    { key: 'ownerId', header: 'Employee', value: (row) => `#${row.ownerId ?? '—'}`, mobilePriority: 'secondary' },
+    { key: 'amount', header: 'Amount', type: 'currency' },
+    { key: 'status', header: 'Status', type: 'chip', value: (row) => this.label(row.status) },
+    { key: 'paymentDate', header: 'Paid on', type: 'date', mobilePriority: 'secondary', emptyValue: '—' },
+    { key: 'paymentReference', header: 'Reference', mobilePriority: 'secondary', emptyValue: '—' },
+    { key: 'updatedAt', header: 'Updated', type: 'date', mobilePriority: 'secondary' },
+  ];
+  readonly tableActions: DataTableAction<Reimbursement>[] = [
+    { id: 'update', label: 'Update', icon: 'edit', handler: (row) => this.startUpdate(row), visible: (row) => this.canUpdate(row) },
+  ];
+  get visibleColumns(): DataTableColumn<Reimbursement>[] {
+    return this.isAdmin() ? this.tableColumns : this.tableColumns.filter((column) => column.key !== 'ownerId');
+  }
   readonly form = inject(FormBuilder).nonNullable.group({
     status: ['' as ReimbursementStatus | '', Validators.required],
     paymentDate: [''],
@@ -59,16 +74,22 @@ export class ReimbursementsComponent {
     this.load(0);
   }
 
-  load(page = this.page()): void {
+  load(page = this.page(), pageSize = this.pageSize()): void {
     this.state.set('loading');
     this.service
-      .list({ status: this.statusFilter.value, page, size: PAGE_SIZE })
+      .list({ status: this.statusFilter.value, page, size: pageSize })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
+          const lastPage = Math.max(0, Math.ceil(result.total / pageSize) - 1);
+          if (page > lastPage) {
+            this.load(lastPage, pageSize);
+            return;
+          }
           this.rows.set(result.items);
           this.total.set(result.total);
           this.page.set(page);
+          this.pageSize.set(pageSize);
           this.state.set('ready');
         },
         error: (error: unknown) => {
@@ -76,6 +97,10 @@ export class ReimbursementsComponent {
           this.state.set('error');
         },
       });
+  }
+
+  onTablePageChange(event: DataTablePageChange): void {
+    this.load(event.pageIndex, event.pageSize);
   }
 
   /** Administrators may update others' reimbursements while a next status exists. */

@@ -35,8 +35,8 @@
 }
 
 .accent .icon-wrap {
-  background: rgb(20 184 166 / 0.12);
-  color: #0f766e;
+  background: var(--brand-accent-soft);
+  color: var(--brand-accent-strong);
 }
 
 .icon-wrap mat-icon {

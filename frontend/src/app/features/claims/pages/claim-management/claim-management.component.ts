@@ -1,5 +1,6 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,6 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TOAST_MESSAGES } from '../../../../core/constants/toast-messages';
+import { describeHttpError } from '../../../../core/http/describe-error';
 import { Claim, ClaimPayload, Expense } from '../../../../core/models/domain.models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ClaimService } from '../../../../core/services/claim.service';
@@ -21,6 +23,7 @@ import {
   DataTableAction,
   DataTableColumn,
   DataTableComponent,
+  DataTablePageChange,
 } from '../../../../shared/components/data-table/data-table.component';
 import { StatCardComponent } from '../../../../shared/components/stat-card/stat-card.component';
 
@@ -45,6 +48,7 @@ import { StatCardComponent } from '../../../../shared/components/stat-card/stat-
 })
 export class ClaimManagementComponent {
   private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly claimService = inject(ClaimService);
   private readonly expenseService = inject(ExpenseService);
   private readonly authService = inject(AuthService);
@@ -54,18 +58,24 @@ export class ClaimManagementComponent {
   private readonly router = inject(Router);
 
   readonly claims = signal<Claim[]>([]);
+  readonly tableTotal = signal(0);
+  readonly tablePage = signal(0);
+  readonly tablePageSize = signal(20);
+  readonly tableLoading = signal(false);
+  readonly tableError = signal<string | null>(null);
+  readonly pendingClaims = signal(0);
   /** The caller's own expenses: a claim can only cover these (enforced by the backend). */
   readonly ownExpenses = signal<Expense[]>([]);
   readonly editingClaimId = signal<number | null>(null);
   readonly isFormPage = signal(false);
-  readonly pendingClaims = computed(() => this.claims().filter((claim) => this.isAwaitingReview(claim)).length);
+  private requestedEditId: number | null = null;
   readonly tableColumns: DataTableColumn<Claim>[] = [
     { key: 'claimNumber', header: 'Claim' },
     { key: 'title', header: 'Title' },
-    { key: 'submittedAt', header: 'Submitted', type: 'date' },
+    { key: 'submittedAt', header: 'Submitted', type: 'date', mobilePriority: 'secondary' },
     { key: 'claimAmount', header: 'Amount', type: 'currency' },
     { key: 'status', header: 'Status', type: 'chip' },
-    { key: 'description', header: 'Description' },
+    { key: 'description', header: 'Description', mobilePriority: 'secondary' },
   ];
   // Visibility mirrors the backend rules for a better UX; claim-service enforces them independently.
   readonly tableActions: DataTableAction<Claim>[] = [
@@ -117,13 +127,17 @@ export class ClaimManagementComponent {
   );
 
   constructor() {
-    this.route.paramMap.subscribe((params) => {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const id = Number(params.get('id'));
       this.isFormPage.set(this.router.url.includes('/new') || this.router.url.includes('/edit/'));
       this.editingClaimId.set(Number.isFinite(id) && id > 0 ? id : null);
       this.patchEditingClaim();
+      if (this.isFormPage()) {
+        this.loadFormData();
+      } else {
+        this.loadData(0);
+      }
     });
-    this.loadData();
   }
 
   submit(): void {
@@ -136,7 +150,6 @@ export class ClaimManagementComponent {
     const onSaved = () => {
       this.toastService.success(this.editingClaimId() ? TOAST_MESSAGES.claims.updated : TOAST_MESSAGES.claims.created);
       this.resetForm();
-      this.loadData();
       this.router.navigate(['/claims']);
     };
 
@@ -158,10 +171,20 @@ export class ClaimManagementComponent {
     if (!claim) {
       if (this.isFormPage() && !this.editingClaimId()) {
         this.resetForm();
+      } else if (this.isFormPage() && this.editingClaimId() && this.requestedEditId !== this.editingClaimId()) {
+        const id = this.editingClaimId()!;
+        this.requestedEditId = id;
+        this.claimService.getClaim(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+          next: (editingClaim) => this.patchForm(editingClaim),
+        });
       }
       return;
     }
 
+    this.patchForm(claim);
+  }
+
+  private patchForm(claim: Claim): void {
     this.claimForm.patchValue({
       claimNumber: claim.claimNumber,
       title: claim.title,
@@ -191,7 +214,7 @@ export class ClaimManagementComponent {
         if (this.editingClaimId() === claim.id) {
           this.resetForm();
         }
-        this.loadData();
+        this.loadData(this.tablePage(), this.tablePageSize());
       });
       });
   }
@@ -203,7 +226,7 @@ export class ClaimManagementComponent {
   private reviewClaim(claim: Claim, approve: boolean): void {
     const onReviewed = () => {
       this.toastService.success(approve ? TOAST_MESSAGES.claims.approved : TOAST_MESSAGES.claims.rejected);
-      this.loadData();
+      this.loadData(this.tablePage(), this.tablePageSize());
     };
     if (approve) {
       this.claimService.approveClaim(claim.id, onReviewed);
@@ -229,14 +252,7 @@ export class ClaimManagementComponent {
     );
   }
 
-  private loadData(): void {
-    this.claimService.getClaims(
-      (claims) => {
-        this.claims.set(claims);
-        this.patchEditingClaim();
-      },
-      () => this.claims.set([]),
-    );
+  private loadFormData(): void {
     this.expenseService.getExpenses(
       (expenses) =>
         this.ownExpenses.set(
@@ -249,5 +265,44 @@ export class ClaimManagementComponent {
         ),
       () => this.ownExpenses.set([]),
     );
+  }
+
+  loadData(page = this.tablePage(), size = this.tablePageSize()): void {
+    this.loadClaimsPage(page, size);
+    this.claimService.getSummary().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (summary) => this.pendingClaims.set(summary.awaitingReview),
+      error: () => this.pendingClaims.set(0),
+    });
+  }
+
+  private loadClaimsPage(page: number, size: number): void {
+    this.tableLoading.set(true);
+    this.tableError.set(null);
+    this.claimService
+      .listClaims({ page, size, sort: 'submittedAt,desc' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          const lastPage = Math.max(0, Math.ceil(result.total / size) - 1);
+          if (page > lastPage) {
+            this.loadClaimsPage(lastPage, size);
+            return;
+          }
+          this.claims.set(result.items);
+          this.tableTotal.set(result.total);
+          this.tablePage.set(page);
+          this.tablePageSize.set(size);
+          this.tableLoading.set(false);
+          this.patchEditingClaim();
+        },
+        error: (error: unknown) => {
+          this.tableError.set(describeHttpError(error, 'claims service'));
+          this.tableLoading.set(false);
+        },
+      });
+  }
+
+  onTablePageChange(event: DataTablePageChange): void {
+    this.loadClaimsPage(event.pageIndex, event.pageSize);
   }
 }

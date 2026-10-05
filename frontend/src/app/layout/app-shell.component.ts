@@ -11,6 +11,7 @@ import { EMPTY, catchError, filter, map, switchMap, timer } from 'rxjs';
 
 import { AuthService } from '../core/services/auth.service';
 import { NotificationService } from '../core/services/notification.service';
+import { ThemeService } from '../core/services/theme.service';
 import { BrandMarkComponent } from '../shared/components/brand-mark/brand-mark.component';
 
 interface NavItem {
@@ -70,6 +71,7 @@ export class AppShellComponent {
   ];
 
   readonly user = this.authService.currentUser;
+  readonly theme = inject(ThemeService);
   readonly isMobile = this.handset;
   /** Desktop keeps the sidebar open by default; on phones it starts closed. */
   readonly sidebarOpen = signal(!this.handset());
@@ -104,6 +106,10 @@ export class AppShellComponent {
 
   toggleSidebar(): void {
     this.sidebarOpen.update((open) => !open);
+  }
+
+  toggleTheme(): void {
+    this.theme.toggle();
   }
 
   logout(): void {

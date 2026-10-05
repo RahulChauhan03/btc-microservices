@@ -10,9 +10,12 @@
   --brand: #2350d8;
   --brand-rgb: 35 80 216;
   --brand-hover: #1b41b4;
+  --on-brand: #ffffff;
   --brand-soft: #eef2fd;
   --brand-ink: #0b1f3a;
   --brand-accent: #14b8a6;
+  --brand-accent-soft: rgb(20 184 166 / 0.12);
+  --brand-accent-strong: #0f766e;
 
   /* Neutrals */
   --ink-rgb: 15 23 42;
@@ -25,6 +28,8 @@
   --text: #111827;
   --text-muted: #4b5565;
   --text-subtle: #6b7383;
+  --datepicker-action: #334155;
+  --datepicker-nav: #475569;
 
   /* Status (text on soft background meets WCAG AA) */
   --success: #067647;
@@ -56,10 +61,53 @@
   --brand-2: var(--brand);
 }
 
+/* Dark surfaces map onto the same tokens, keeping page and component styles shared. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --brand: #91a9ff;
+  --brand-rgb: 145 169 255;
+  --brand-hover: #b2c2ff;
+  --on-brand: var(--brand-ink);
+  --brand-soft: #202d4e;
+  --brand-accent-soft: rgb(20 184 166 / 0.16);
+  --brand-accent-strong: #5eead4;
+
+  --ink-rgb: 5 8 13;
+  --bg: #0f1117;
+  --surface: #151922;
+  --surface-muted: #1b202b;
+  --surface-sunken: #202633;
+  --border: #2b3240;
+  --border-strong: #3b4556;
+  --text: #f3f4f6;
+  --text-muted: #a7afbf;
+  --text-subtle: #8792a6;
+  --datepicker-action: #e1e6ef;
+  --datepicker-nav: #a7afbf;
+
+  --success: #55d99a;
+  --success-soft: #153326;
+  --warning: #f2c16d;
+  --warning-soft: #3a2d1b;
+  --danger: #ff8982;
+  --danger-soft: #3e2224;
+  --info: #8abaff;
+  --info-soft: #1d2d49;
+  --neutral-soft: #252c38;
+
+  --shadow-xs: 0 1px 2px rgb(var(--ink-rgb) / 0.24);
+  --shadow-sm: 0 1px 3px rgb(var(--ink-rgb) / 0.32), 0 1px 2px rgb(var(--ink-rgb) / 0.2);
+  --shadow-md: 0 6px 16px -4px rgb(var(--ink-rgb) / 0.42), 0 2px 4px -2px rgb(var(--ink-rgb) / 0.24);
+  --shadow-lg: 0 18px 40px -12px rgb(var(--ink-rgb) / 0.6);
+  --focus-ring: 0 0 0 3px rgb(126 157 255 / 0.5);
+}
+
 /* Angular Material system tokens mapped onto the brand */
 html {
+  color-scheme: light;
   --mat-sys-primary: var(--brand);
-  --mat-sys-on-primary: #ffffff;
+  --mat-sys-on-primary: var(--on-brand);
   --mat-sys-primary-container: var(--brand-soft);
   --mat-sys-on-primary-container: var(--brand-ink);
   --mat-sys-surface: var(--surface);
@@ -83,6 +131,55 @@ html {
   --mat-sys-title-small-font: var(--font-sans);
   --mat-sys-headline-small-font: var(--font-sans);
   --mat-sys-label-large-weight: 600;
+}
+
+/* Angular Material overlays, form controls, tables, and navigation share the app palette. */
+html[data-theme='dark'] {
+  --mat-sys-background: var(--bg);
+  --mat-sys-on-background: var(--text);
+  --mat-sys-primary: var(--brand);
+  --mat-sys-on-primary: var(--on-brand);
+  --mat-sys-primary-container: var(--brand-soft);
+  --mat-sys-on-primary-container: #dce6ff;
+  --mat-sys-secondary: var(--brand-accent);
+  --mat-sys-on-secondary: #082d2a;
+  --mat-sys-secondary-container: #16433e;
+  --mat-sys-on-secondary-container: #b9f2e8;
+  --mat-sys-tertiary: #efb47a;
+  --mat-sys-on-tertiary: #34200d;
+  --mat-sys-tertiary-container: #4a321c;
+  --mat-sys-on-tertiary-container: #ffdfc0;
+  --mat-sys-error: var(--danger);
+  --mat-sys-on-error: #3e0808;
+  --mat-sys-error-container: var(--danger-soft);
+  --mat-sys-on-error-container: #ffd9d6;
+  --mat-sys-surface: var(--surface);
+  --mat-sys-on-surface: var(--text);
+  --mat-sys-surface-variant: var(--surface-sunken);
+  --mat-sys-on-surface-variant: var(--text-muted);
+  --mat-sys-surface-dim: var(--bg);
+  --mat-sys-surface-bright: var(--surface-sunken);
+  --mat-sys-surface-container-lowest: var(--surface);
+  --mat-sys-surface-container-low: var(--surface);
+  --mat-sys-surface-container: var(--surface-muted);
+  --mat-sys-surface-container-high: var(--surface-sunken);
+  --mat-sys-surface-container-highest: var(--surface-sunken);
+  --mat-sys-outline: var(--border-strong);
+  --mat-sys-outline-variant: var(--border);
+  --mat-sys-inverse-surface: #e3e7ee;
+  --mat-sys-inverse-on-surface: #242a34;
+  --mat-sys-inverse-primary: #4b6ddd;
+  --mat-sys-scrim: #000000;
+  --mat-sys-shadow: #000000;
+}
+
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition-property: color, background-color, border-color, box-shadow;
+  transition-duration: 180ms;
+  transition-timing-function: ease;
 }
 
 * {
@@ -171,6 +268,9 @@ a.mat-mdc-list-item:focus-visible {
 .page-grid {
   display: grid;
   gap: 1.25rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 0;
   animation: page-enter 280ms var(--ease-out) both;
 }
@@ -178,7 +278,7 @@ a.mat-mdc-list-item:focus-visible {
 .metrics-grid {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
 }
 
 .page-toolbar {
@@ -220,6 +320,8 @@ a.mat-mdc-list-item:focus-visible {
 
 .section-card {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
   border-radius: var(--radius-lg) !important;
   border: 1px solid var(--border);
   background: var(--surface) !important;
@@ -255,7 +357,7 @@ a.mat-mdc-list-item:focus-visible {
 .compact-form-card .form-grid,
 .compact-filter-card .form-grid {
   gap: 0.65rem;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
 }
 
 .table-card {
@@ -300,7 +402,17 @@ a.mat-mdc-list-item:focus-visible {
 .form-grid {
   display: grid;
   gap: 0.25rem 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+}
+
+.page-grid > *,
+.section-card > * {
+  min-width: 0;
+}
+
+.simple-table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .full-width {
@@ -474,9 +586,14 @@ app-claim-management > .page-grid {
 
 .table-responsive {
   flex: 1;
+  width: 100%;
+  max-width: 100%;
   max-height: 100%;
+  min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
+  overscroll-behavior-inline: contain;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -600,7 +717,7 @@ app-claim-management > .page-grid {
 
 .mat-mdc-unelevated-button:not(:disabled) {
   background: var(--brand) !important;
-  color: #fff !important;
+  color: var(--on-brand) !important;
   box-shadow: var(--shadow-xs);
   transition:
     background-color 140ms ease,
@@ -627,6 +744,12 @@ app-claim-management > .page-grid {
 .mat-mdc-dialog-container {
   --mat-dialog-container-shape: var(--radius-lg);
   --mat-dialog-container-color: var(--surface);
+}
+
+@media (max-width: 600px) {
+  .mat-mdc-dialog-container {
+    max-width: calc(100vw - 1.5rem) !important;
+  }
 }
 
 /* ---------- Toasts ---------- */

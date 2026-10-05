@@ -1,9 +1,8 @@
-import { CurrencyPipe, DatePipe, formatCurrency } from '@angular/common';
+import { DatePipe, formatCurrency } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -17,9 +16,9 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { TripService } from '../../../../core/services/trip.service';
 import { BarItem, BarListComponent } from '../../../../shared/components/bar-list/bar-list.component';
 import { BtcLoaderComponent } from '../../../../shared/components/btc-loader/btc-loader.component';
+import { DataTableColumn, DataTableComponent, DataTablePageChange } from '../../../../shared/components/data-table/data-table.component';
 import { StatCardComponent } from '../../../../shared/components/stat-card/stat-card.component';
 
-const TRIP_PAGE_SIZE = 10;
 const MAX_DAYS = 731;
 
 interface TripRow extends TripSpend {
@@ -44,16 +43,15 @@ function validRange(group: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-reports',
   imports: [
-    CurrencyPipe,
     DatePipe,
     ReactiveFormsModule,
-    RouterLink,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
     BarListComponent,
     BtcLoaderComponent,
+    DataTableComponent,
     StatCardComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -83,6 +81,19 @@ export class ReportsComponent {
   readonly tripRows = signal<TripRow[]>([]);
   readonly tripTotal = signal(0);
   readonly tripPage = signal(0);
+  readonly tripPageSize = signal(10);
+  readonly statusColumns: DataTableColumn<ClaimStatusReport['byStatus'][number]>[] = [
+    { key: 'status', header: 'Status', type: 'chip', value: (row) => this.label(row.status) },
+    { key: 'count', header: 'Claims', type: 'text' },
+    { key: 'total', header: 'Amount', type: 'currency' },
+  ];
+  readonly tripColumns: DataTableColumn<TripRow>[] = [
+    { key: 'trip', header: 'Trip', type: 'link', value: (row) => row.trip?.tripCode ?? `Trip #${row.tripId}`, link: (row) => ['/trips/view', row.tripId] },
+    { key: 'destination', header: 'Destination', value: (row) => row.trip?.destination ?? '—' },
+    { key: 'count', header: 'Expenses', mobilePriority: 'secondary' },
+    { key: 'total', header: 'Spent', type: 'currency' },
+    { key: 'budget', header: 'Budget', type: 'currency', value: (row) => row.trip?.budget ?? null, emptyValue: '—', mobilePriority: 'secondary' },
+  ];
   readonly exporting = signal(false);
   /** Per-section failures: expense and claim reports come from different services and load independently. */
   readonly expensesError = signal<string | null>(null);
@@ -108,8 +119,6 @@ export class ReportsComponent {
   readonly approvedAmount = computed(
     () => this.claims()?.byStatus.find((row) => row.status === 'APPROVED')?.total ?? 0,
   );
-  readonly tripPages = computed(() => Math.max(1, Math.ceil(this.tripTotal() / TRIP_PAGE_SIZE)));
-
   constructor() {
     this.applyPreset(12);
   }
@@ -157,18 +166,18 @@ export class ReportsComponent {
       });
   }
 
-  loadTrips(page: number): void {
+  loadTrips(page: number, pageSize = this.tripPageSize()): void {
     const range = this.range();
     if (!range) {
       return;
     }
     this.reports
-      .spendingByTrip(range, page, TRIP_PAGE_SIZE)
+      .spendingByTrip(range, page, pageSize)
       .pipe(
         // One batch lookup for the trips on this page (no request per row).
         switchMap((result) =>
           (result.items.length
-            ? this.trips.listTrips({ ids: result.items.map((row) => String(row.tripId)), size: TRIP_PAGE_SIZE })
+            ? this.trips.listTrips({ ids: result.items.map((row) => String(row.tripId)), size: result.items.length })
             : of({ items: [] as Trip[], total: 0 })
           ).pipe(
             map((trips) => ({
@@ -185,10 +194,15 @@ export class ReportsComponent {
           this.tripRows.set(rows);
           this.tripTotal.set(total);
           this.tripPage.set(page);
+          this.tripPageSize.set(pageSize);
         },
         error: (error: unknown) => this.tripsError.set(describeHttpError(error, 'expense or trip service')),
       });
   }
+
+    onTripPageChange(event: DataTablePageChange): void {
+      this.loadTrips(event.pageIndex, event.pageSize);
+    }
 
   exportCsv(): void {
     const range = this.range();

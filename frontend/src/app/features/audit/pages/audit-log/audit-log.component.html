@@ -8,13 +8,15 @@
   </header>
 
   <section class="section-card">
-    <mat-button-toggle-group [value]="source()" (change)="setSource($event.value)" aria-label="Audit source">
-      @for (s of sources; track s.key) {
-        <mat-button-toggle [value]="s.key">{{ s.label }}</mat-button-toggle>
-      }
-    </mat-button-toggle-group>
+    <div class="audit-tabs" role="region" aria-label="Audit source navigation" tabindex="0">
+      <mat-button-toggle-group [value]="source()" (change)="setSource($event.value)" aria-label="Audit source">
+        @for (s of sources; track s.key) {
+          <mat-button-toggle [value]="s.key">{{ s.label }}</mat-button-toggle>
+        }
+      </mat-button-toggle-group>
+    </div>
 
-    <form class="filters" [formGroup]="filters" (ngSubmit)="load(0)">
+    <form class="audit-filters" [formGroup]="filters" (ngSubmit)="load(0)">
       <mat-form-field appearance="outline">
         <mat-label>Action</mat-label>
         <mat-select formControlName="action">
@@ -56,37 +58,21 @@
         </div>
       }
       @default {
-        @if (rows().length) {
-          <div class="table-responsive">
-            <table class="simple-table">
-              <thead>
-                <tr><th scope="col">When</th><th scope="col">Actor</th><th scope="col">Action</th><th scope="col">Target</th><th scope="col">Summary</th></tr>
-              </thead>
-              <tbody>
-                @for (entry of rows(); track entry.id) {
-                  <tr>
-                    <td><time [attr.datetime]="entry.createdAt">{{ entry.createdAt | date: 'medium' }}</time></td>
-                    <td>#{{ entry.actorId }}</td>
-                    <td>{{ label(entry.action) }}</td>
-                    <td>{{ entry.targetType.toLowerCase() }} #{{ entry.targetId }}</td>
-                    <td class="summary">{{ entry.summary }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          <div class="pager">
-            <span>{{ total() }} records · page {{ page() + 1 }} of {{ pages() }}</span>
-            <button mat-stroked-button type="button" (click)="load(page() - 1)" [disabled]="page() === 0">Previous</button>
-            <button mat-stroked-button type="button" (click)="load(page() + 1)" [disabled]="page() + 1 >= pages()">Next</button>
-          </div>
-        } @else {
-          <div class="empty-state">
-            <mat-icon aria-hidden="true">manage_search</mat-icon>
-            <strong>No audit records</strong>
-            <span>Nothing matches these filters in the selected period (default: last 12 months).</span>
-          </div>
-        }
+        <app-data-table
+          title="Audit records"
+          [rows]="rows()"
+          [columns]="tableColumns"
+          [showTitle]="false"
+          [showSearch]="false"
+          paginationMode="server"
+          [totalItems]="total()"
+          [pageIndex]="page()"
+          [pageSize]="pageSize()"
+          emptyTitle="No audit records"
+          emptyMessage="Nothing matches these filters in the selected period (default: last 12 months)."
+          (pageChange)="onTablePageChange($event)"
+          (retry)="load(page(), pageSize())"
+        />
       }
     }
   </section>

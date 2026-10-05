@@ -16,10 +16,10 @@
 .period-actions button {
   min-width: auto;
   padding-inline: 0.45rem;
-  color: #334155;
+  color: var(--datepicker-action);
   font-weight: 700;
 }
 
 .nav-actions button {
-  color: #475569;
+  color: var(--datepicker-nav);
 }

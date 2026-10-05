@@ -69,55 +69,24 @@
         </div>
       }
       @default {
-        @if (rows().length) {
-          <div class="table-responsive">
-            <table class="simple-table">
-              <thead>
-                <tr>
-                  <th scope="col">Claim</th>
-                  @if (isAdmin()) { <th scope="col">Employee</th> }
-                  <th scope="col" class="num">Amount</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Paid on</th>
-                  <th scope="col">Reference</th>
-                  <th scope="col">Updated</th>
-                  @if (isAdmin()) { <th scope="col"><span class="visually-hidden">Actions</span></th> }
-                </tr>
-              </thead>
-              <tbody>
-                @for (row of rows(); track row.id) {
-                  <tr>
-                    <td><strong>{{ row.claimNumber }}</strong><br /><small class="muted">{{ row.claimTitle }}</small></td>
-                    @if (isAdmin()) { <td>#{{ row.ownerId }}</td> }
-                    <td class="num">{{ row.amount | currency: 'USD' }}</td>
-                    <td><span [class]="'status-badge status-' + row.status.toLowerCase()">{{ label(row.status) }}</span></td>
-                    <td>{{ row.paymentDate ? (row.paymentDate | date: 'mediumDate') : '—' }}</td>
-                    <td>{{ row.paymentReference ?? '—' }}</td>
-                    <td>{{ row.updatedAt | date: 'mediumDate' }}</td>
-                    @if (isAdmin()) {
-                      <td>
-                        @if (canUpdate(row)) {
-                          <button mat-stroked-button type="button" (click)="startUpdate(row)" [attr.aria-label]="'Update reimbursement ' + row.claimNumber">Update</button>
-                        }
-                      </td>
-                    }
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          <div class="pager">
-            <span>Page {{ page() + 1 }} of {{ pages() }}</span>
-            <button mat-stroked-button type="button" (click)="load(page() - 1)" [disabled]="page() === 0">Previous</button>
-            <button mat-stroked-button type="button" (click)="load(page() + 1)" [disabled]="page() + 1 >= pages()">Next</button>
-          </div>
-        } @else {
-          <div class="empty-state">
-            <mat-icon aria-hidden="true">payments</mat-icon>
-            <strong>No reimbursements</strong>
-            <span>Approved claims appear here with their payment status.</span>
-          </div>
-        }
+        <app-data-table
+          title="Reimbursements"
+          [rows]="rows()"
+          [columns]="visibleColumns"
+          [actions]="isAdmin() ? tableActions : []"
+          [showTitle]="false"
+          [showSearch]="false"
+          paginationMode="server"
+          [totalItems]="total()"
+          [pageIndex]="page()"
+          [pageSize]="pageSize()"
+          [loading]="state() === 'loading'"
+          [errorMessage]="state() === 'error' ? loadError() : null"
+          emptyTitle="No reimbursements"
+          emptyMessage="Approved claims appear here with their payment status."
+          (pageChange)="onTablePageChange($event)"
+          (retry)="load(page(), pageSize())"
+        />
       }
     }
   </section>

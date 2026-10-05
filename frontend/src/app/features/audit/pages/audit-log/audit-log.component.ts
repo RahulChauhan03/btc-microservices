@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -13,8 +12,7 @@ import { AuditEntry, AuditSource } from '../../../../core/models/domain.models';
 import { describeHttpError } from '../../../../core/http/describe-error';
 import { AuditService } from '../../../../core/services/audit.service';
 import { BtcLoaderComponent } from '../../../../shared/components/btc-loader/btc-loader.component';
-
-const PAGE_SIZE = 25;
+import { DataTableColumn, DataTableComponent, DataTablePageChange } from '../../../../shared/components/data-table/data-table.component';
 
 /** What each service audits (see the backend audit modules). */
 export const AUDIT_SOURCES: { key: AuditSource; label: string; service: string; actions: string[] }[] = [
@@ -26,9 +24,10 @@ export const AUDIT_SOURCES: { key: AuditSource; label: string; service: string; 
 /** Administrator-only, read-only audit search, one source service at a time. */
 @Component({
   selector: 'app-audit-log',
-  imports: [DatePipe, ReactiveFormsModule, MatButtonModule, MatButtonToggleModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, BtcLoaderComponent],
+  imports: [ReactiveFormsModule, MatButtonModule, MatButtonToggleModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, BtcLoaderComponent, DataTableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './audit-log.component.html',
+  styleUrl: './audit-log.component.css',
 })
 export class AuditLogComponent {
   private readonly audit = inject(AuditService);
@@ -48,8 +47,15 @@ export class AuditLogComponent {
   readonly rows = signal<AuditEntry[]>([]);
   readonly total = signal(0);
   readonly page = signal(0);
-  readonly pages = computed(() => Math.max(1, Math.ceil(this.total() / PAGE_SIZE)));
+  readonly pageSize = signal(25);
   readonly errorMessage = signal('');
+  readonly tableColumns: DataTableColumn<AuditEntry>[] = [
+    { key: 'createdAt', header: 'When', type: 'date', mobilePriority: 'secondary' },
+    { key: 'actorId', header: 'Actor', value: (entry) => `#${entry.actorId}`, mobilePriority: 'secondary' },
+    { key: 'action', header: 'Action', value: (entry) => this.label(entry.action) },
+    { key: 'target', header: 'Target', value: (entry) => `${entry.targetType.toLowerCase()} #${entry.targetId}`, mobilePriority: 'secondary' },
+    { key: 'summary', header: 'Summary', mobilePriority: 'secondary' },
+  ];
 
   constructor() {
     this.load(0);
@@ -61,7 +67,7 @@ export class AuditLogComponent {
     this.load(0);
   }
 
-  load(page = this.page()): void {
+  load(page = this.page(), pageSize = this.pageSize()): void {
     if (this.filters.invalid) {
       this.filters.markAllAsTouched();
       return;
@@ -69,13 +75,19 @@ export class AuditLogComponent {
     const { action, actorId, from, to } = this.filters.getRawValue();
     this.state.set('loading');
     this.audit
-      .search(this.source(), { action, actorId: actorId.trim(), from, to, page, size: PAGE_SIZE, sort: 'createdAt,desc' })
+      .search(this.source(), { action, actorId: actorId.trim(), from, to, page, size: pageSize, sort: 'createdAt,desc' })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
+          const lastPage = Math.max(0, Math.ceil(result.total / pageSize) - 1);
+          if (page > lastPage) {
+            this.load(lastPage, pageSize);
+            return;
+          }
           this.rows.set(result.items);
           this.total.set(result.total);
           this.page.set(page);
+          this.pageSize.set(pageSize);
           this.state.set('ready');
         },
         error: (error: unknown) => {
@@ -83,6 +95,10 @@ export class AuditLogComponent {
           this.state.set('error');
         },
       });
+  }
+
+  onTablePageChange(event: DataTablePageChange): void {
+    this.load(event.pageIndex, event.pageSize);
   }
 
   label(action: string): string {

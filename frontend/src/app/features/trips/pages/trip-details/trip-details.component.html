@@ -106,31 +106,23 @@
               <a mat-button routerLink="/expenses/new"><mat-icon>add</mat-icon>Add expense</a>
             }
           </div>
-          @if (d.expenses.length) {
-            <div class="table-responsive">
-              <table class="simple-table">
-                <thead>
-                  <tr><th scope="col">Date</th><th scope="col">Title</th><th scope="col">Category</th><th scope="col" class="num">Amount</th><th scope="col">Claim</th></tr>
-                </thead>
-                <tbody>
-                  @for (expense of d.expenses; track expense.id) {
-                    <tr>
-                      <td>{{ expense.expenseDate | date: 'mediumDate' }}</td>
-                      <td>{{ expense.title }}</td>
-                      <td>{{ label(expense.category) }}</td>
-                      <td class="num">{{ expense.amount | currency: 'USD' }}</td>
-                      <td>{{ expense.claimId ? 'In claim #' + expense.claimId : '—' }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-            @if (d.expenseTotal > d.expenses.length) {
-              <p class="hint">Showing the latest {{ d.expenses.length }} of {{ d.expenseTotal }} expenses.</p>
-            }
-          } @else {
-            <p class="muted">No expenses recorded for this trip.</p>
-          }
+          <app-data-table
+            title="Trip expenses"
+            [rows]="d.expenses"
+            [columns]="expenseColumns"
+            [showTitle]="false"
+            [showSearch]="false"
+            paginationMode="server"
+            [totalItems]="d.expenseTotal"
+            [pageIndex]="expensePage()"
+            [pageSize]="expensePageSize()"
+            [loading]="expensesLoading()"
+            [errorMessage]="expensesError()"
+            emptyTitle="No expenses recorded"
+            emptyMessage="This trip has no expenses yet."
+            (pageChange)="onExpensePageChange($event)"
+            (retry)="onExpensePageChange({ pageIndex: expensePage(), pageSize: expensePageSize() })"
+          />
         </article>
       }
     }

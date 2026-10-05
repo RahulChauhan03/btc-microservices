@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe, KeyValuePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -14,6 +14,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { PolicyService } from '../../../../core/services/policy.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { BtcLoaderComponent } from '../../../../shared/components/btc-loader/btc-loader.component';
+import { DataTableAction, DataTableColumn, DataTableComponent } from '../../../../shared/components/data-table/data-table.component';
 
 export const CATEGORIES: { key: ExpenseCategory; label: string }[] = [
   { key: 'TRAVEL', label: 'Travel' },
@@ -40,7 +41,7 @@ const period: ValidatorFn = (group: AbstractControl): ValidationErrors | null =>
 /** Company travel policy: employees read it; administrators maintain it. The backend enforces both. */
 @Component({
   selector: 'app-travel-policy',
-  imports: [CurrencyPipe, DatePipe, KeyValuePipe, ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, BtcLoaderComponent],
+  imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, BtcLoaderComponent, DataTableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './travel-policy.component.html',
   styleUrl: './travel-policy.component.css',
@@ -58,6 +59,15 @@ export class TravelPolicyComponent {
   readonly list = signal<TravelPolicy[]>([]);
   readonly current = computed(() => this.list().find((policy) => policy.active) ?? null);
   readonly others = computed(() => this.list().filter((policy) => !policy.active));
+  readonly tableColumns: DataTableColumn<TravelPolicy>[] = [
+    { key: 'name', header: 'Name' },
+    { key: 'period', header: 'Period', value: (policy) => `${policy.effectiveFrom} – ${policy.effectiveTo ?? 'Open-ended'}`, mobilePriority: 'secondary' },
+    { key: 'tripLimit', header: 'Trip limit', type: 'currency', value: (policy) => policy.tripLimit, emptyValue: '—' },
+    { key: 'limits', header: 'Limits', value: (policy) => this.limitSummary(policy), mobilePriority: 'secondary' },
+  ];
+  readonly tableActions: DataTableAction<TravelPolicy>[] = [
+    { id: 'edit', label: 'Edit', icon: 'edit', handler: (policy) => this.edit(policy), visible: () => this.isAdmin() },
+  ];
   /** null = form closed, 0 = new policy, otherwise the id being edited. */
   readonly editing = signal<number | null>(null);
   readonly saving = signal(false);
@@ -154,5 +164,11 @@ export class TravelPolicyComponent {
 
   categoryLabel(key: string): string {
     return CATEGORIES.find((category) => category.key === key)?.label ?? key;
+  }
+
+  private limitSummary(policy: TravelPolicy): string {
+    return Object.entries(policy.categoryLimits)
+      .map(([key, value]) => `${this.categoryLabel(key)} ${new Intl.NumberFormat('en-US', { style: 'currency', currency: policy.currency }).format(value)}`)
+      .join(' · ') || '—';
   }
 }

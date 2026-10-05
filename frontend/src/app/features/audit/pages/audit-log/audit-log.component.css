@@ -1,0 +1,35 @@
+.audit-tabs {
+  max-width: 100%;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.audit-tabs mat-button-toggle-group {
+  width: max-content;
+  max-width: none;
+}
+
+.audit-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.audit-filters > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.audit-filters button {
+  min-height: 40px;
+}
+
+@media (max-width: 768px) {
+  .audit-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

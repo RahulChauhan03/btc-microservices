@@ -19,6 +19,10 @@ export class ClaimService {
     return this.crudHttp.page<Claim>(this.endpoint, params);
   }
 
+  getClaim(id: number): Observable<Claim> {
+    return this.crudHttp.fetch<Claim>(`${this.endpoint}/${id}`);
+  }
+
   getSummary(ownerId?: number | null): Observable<ClaimSummary> {
     return this.crudHttp.fetch<ClaimSummary>(`${this.endpoint}/summary`, { ownerId });
   }

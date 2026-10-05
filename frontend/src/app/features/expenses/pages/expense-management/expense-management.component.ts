@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -11,6 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TOAST_MESSAGES } from '../../../../core/constants/toast-messages';
+import { describeHttpError } from '../../../../core/http/describe-error';
 import { Expense, ExpensePayload, Trip } from '../../../../core/models/domain.models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
@@ -21,6 +23,7 @@ import {
   DataTableAction,
   DataTableColumn,
   DataTableComponent,
+  DataTablePageChange,
 } from '../../../../shared/components/data-table/data-table.component';
 import { StatCardComponent } from '../../../../shared/components/stat-card/stat-card.component';
 import { DatepickerHeaderComponent } from '../../../../shared/components/datepicker-header/datepicker-header.component';
@@ -46,6 +49,7 @@ import { DatepickerHeaderComponent } from '../../../../shared/components/datepic
 })
 export class ExpenseManagementComponent {
   private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly expenseService = inject(ExpenseService);
   private readonly tripService = inject(TripService);
   private readonly authService = inject(AuthService);
@@ -56,19 +60,23 @@ export class ExpenseManagementComponent {
   readonly calendarHeaderComponent = DatepickerHeaderComponent;
 
   readonly expenses = signal<Expense[]>([]);
+  readonly tableTotal = signal(0);
+  readonly tablePage = signal(0);
+  readonly tablePageSize = signal(20);
+  readonly tableLoading = signal(false);
+  readonly tableError = signal<string | null>(null);
+  readonly totalExpenses = signal(0);
   /** The caller's own trips: an expense can only be linked to one of these (enforced by the backend). */
   readonly ownTrips = signal<Trip[]>([]);
   readonly editingExpenseId = signal<number | null>(null);
   readonly isFormPage = signal(false);
-  readonly totalExpenses = computed(() =>
-    this.expenses().reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0),
-  );
+  private requestedEditId: number | null = null;
   readonly tableColumns: DataTableColumn<Expense>[] = [
     { key: 'title', header: 'Title' },
-    { key: 'category', header: 'Category' },
-    { key: 'expenseDate', header: 'Date', type: 'date' },
+    { key: 'category', header: 'Category', mobilePriority: 'secondary' },
+    { key: 'expenseDate', header: 'Date', type: 'date', mobilePriority: 'secondary' },
     { key: 'amount', header: 'Amount', type: 'currency' },
-    { key: 'description', header: 'Description' },
+    { key: 'description', header: 'Description', mobilePriority: 'secondary' },
   ];
   readonly tableActions: DataTableAction<Expense>[] = [
     // Only owners may change an expense, and not while a claim covers it. The backend enforces both.
@@ -98,13 +106,17 @@ export class ExpenseManagementComponent {
   });
 
   constructor() {
-    this.route.paramMap.subscribe((params) => {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const id = Number(params.get('id'));
       this.isFormPage.set(this.router.url.includes('/new') || this.router.url.includes('/edit/'));
       this.editingExpenseId.set(Number.isFinite(id) && id > 0 ? id : null);
       this.patchEditingExpense();
+      if (this.isFormPage()) {
+        this.loadFormData();
+      } else {
+        this.loadData(0);
+      }
     });
-    this.loadData();
   }
 
   submit(): void {
@@ -127,7 +139,6 @@ export class ExpenseManagementComponent {
         this.editingExpenseId() ? TOAST_MESSAGES.expenses.updated : TOAST_MESSAGES.expenses.created,
       );
       this.resetForm();
-      this.loadData();
       this.router.navigate(['/expenses']);
     };
 
@@ -153,10 +164,20 @@ export class ExpenseManagementComponent {
     if (!expense) {
       if (this.isFormPage() && !this.editingExpenseId()) {
         this.resetForm();
+      } else if (this.isFormPage() && this.editingExpenseId() && this.requestedEditId !== this.editingExpenseId()) {
+        const id = this.editingExpenseId()!;
+        this.requestedEditId = id;
+        this.expenseService.getExpense(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+          next: (editingExpense) => this.patchForm(editingExpense),
+        });
       }
       return;
     }
 
+    this.patchForm(expense);
+  }
+
+  private patchForm(expense: Expense): void {
     this.expenseForm.patchValue({
       title: expense.title,
       category: expense.category,
@@ -188,7 +209,7 @@ export class ExpenseManagementComponent {
         if (this.editingExpenseId() === expense.id) {
           this.resetForm();
         }
-        this.loadData();
+        this.loadData(this.tablePage(), this.tablePageSize());
       });
       });
   }
@@ -204,18 +225,49 @@ export class ExpenseManagementComponent {
     });
   }
 
-  private loadData(): void {
-    this.expenseService.getExpenses(
-      (expenses) => {
-        this.expenses.set(expenses);
-        this.patchEditingExpense();
-      },
-      () => this.expenses.set([]),
-    );
+  private loadFormData(): void {
     this.tripService.getTrips(
       (trips) => this.ownTrips.set(trips.filter((trip) => trip.ownerId === this.authService.currentUser()?.id)),
       () => this.ownTrips.set([]),
     );
+  }
+
+  loadData(page = this.tablePage(), size = this.tablePageSize()): void {
+    this.loadExpensePage(page, size);
+    this.expenseService.getSummary().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (summary) => this.totalExpenses.set(summary.total),
+      error: () => this.totalExpenses.set(0),
+    });
+  }
+
+  private loadExpensePage(page: number, size: number): void {
+    this.tableLoading.set(true);
+    this.tableError.set(null);
+    this.expenseService
+      .listExpenses({ page, size, sort: 'expenseDate,desc' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          const lastPage = Math.max(0, Math.ceil(result.total / size) - 1);
+          if (page > lastPage) {
+            this.loadExpensePage(lastPage, size);
+            return;
+          }
+          this.expenses.set(result.items);
+          this.tableTotal.set(result.total);
+          this.tablePage.set(page);
+          this.tablePageSize.set(size);
+          this.tableLoading.set(false);
+        },
+        error: (error: unknown) => {
+          this.tableError.set(describeHttpError(error, 'expense service'));
+          this.tableLoading.set(false);
+        },
+      });
+  }
+
+  onTablePageChange(event: DataTablePageChange): void {
+    this.loadExpensePage(event.pageIndex, event.pageSize);
   }
 
   private toDate(value: string | Date | null | undefined): Date | null {

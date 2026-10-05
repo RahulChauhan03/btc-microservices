@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 
 import { AuthService } from './auth.service';
+import { THEME_STORAGE_KEY } from './theme.service';
 
 const TOKEN_KEY = 'btc_access_token';
 const USER_KEY = 'btc_current_user';
@@ -49,5 +50,15 @@ describe('AuthService session restore', () => {
 
     expect(createService().isAuthenticated()).toBe(false);
     expect(sessionStorage.getItem(TOKEN_KEY)).toBeNull();
+  });
+
+  it('preserves the non-sensitive theme preference on logout', () => {
+    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    localStorage.setItem(TOKEN_KEY, tokenWithExp(Math.floor(Date.now() / 1000) + 600));
+
+    createService().logout(false);
+
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
+    expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
   });
 });

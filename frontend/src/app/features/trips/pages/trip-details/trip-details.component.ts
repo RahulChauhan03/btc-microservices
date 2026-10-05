@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { catchError, forkJoin, map, of } from 'rxjs';
 
 import { Claim, Expense, ExpenseSummary, Trip } from '../../../../core/models/domain.models';
+import { describeHttpError } from '../../../../core/http/describe-error';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ClaimService } from '../../../../core/services/claim.service';
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
@@ -16,6 +17,7 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { TripService } from '../../../../core/services/trip.service';
 import { UserService } from '../../../../core/services/user.service';
 import { BtcLoaderComponent } from '../../../../shared/components/btc-loader/btc-loader.component';
+import { DataTableColumn, DataTableComponent, DataTablePageChange } from '../../../../shared/components/data-table/data-table.component';
 
 interface TripDetails {
   trip: Trip;
@@ -34,7 +36,7 @@ type LoadState = 'loading' | 'ready' | 'not-found' | 'error';
  */
 @Component({
   selector: 'app-trip-details',
-  imports: [RouterLink, CurrencyPipe, DatePipe, MatButtonModule, MatIconModule, BtcLoaderComponent],
+  imports: [RouterLink, CurrencyPipe, DatePipe, MatButtonModule, MatIconModule, BtcLoaderComponent, DataTableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './trip-details.component.html',
   styleUrl: './trip-details.component.css',
@@ -54,6 +56,17 @@ export class TripDetailsComponent {
   readonly state = signal<LoadState>('loading');
   readonly details = signal<TripDetails | null>(null);
   readonly deleting = signal(false);
+  readonly expensePage = signal(0);
+  readonly expensePageSize = signal(20);
+  readonly expensesLoading = signal(false);
+  readonly expensesError = signal<string | null>(null);
+  readonly expenseColumns: DataTableColumn<Expense>[] = [
+    { key: 'expenseDate', header: 'Date', type: 'date', mobilePriority: 'secondary' },
+    { key: 'title', header: 'Title' },
+    { key: 'category', header: 'Category', mobilePriority: 'secondary' },
+    { key: 'amount', header: 'Amount', type: 'currency' },
+    { key: 'claim', header: 'Claim', value: (expense) => expense.claimId ? `In claim #${expense.claimId}` : '—', mobilePriority: 'secondary' },
+  ];
 
   readonly isOwner = computed(() => {
     const trip = this.details()?.trip;
@@ -81,19 +94,51 @@ export class TripDetailsComponent {
     this.state.set('loading');
     forkJoin({
       trip: this.tripService.getTrip(id),
-      expenses: this.expenseService.listExpenses({ tripId: id, sort: 'expenseDate,desc', size: 100 }),
       spending: this.expenseService.getSummary({ tripId: id }),
       claims: this.claimService.listClaims({ tripId: id, sort: 'submittedAt,desc', size: 100 }).pipe(map((page) => page.items)),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: ({ trip, expenses, spending, claims }) => {
-          this.details.set({ trip, ownerName: '', expenses: expenses.items, expenseTotal: expenses.total, spending, claims });
+        next: ({ trip, spending, claims }) => {
+          this.details.set({ trip, ownerName: '', expenses: [], expenseTotal: 0, spending, claims });
           this.state.set('ready');
           this.resolveOwnerName(trip);
+          this.loadExpensesPage(id, 0, this.expensePageSize());
         },
         error: (error: unknown) =>
           this.state.set(error instanceof HttpErrorResponse && (error.status === 404 || error.status === 403) ? 'not-found' : 'error'),
+      });
+  }
+
+  onExpensePageChange(event: DataTablePageChange): void {
+    const tripId = this.details()?.trip.id;
+    if (tripId) {
+      this.loadExpensesPage(tripId, event.pageIndex, event.pageSize);
+    }
+  }
+
+  private loadExpensesPage(tripId: number, page: number, pageSize: number): void {
+    this.expensesLoading.set(true);
+    this.expensesError.set(null);
+    this.expenseService
+      .listExpenses({ tripId, page, size: pageSize, sort: 'expenseDate,desc' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          const lastPage = Math.max(0, Math.ceil(result.total / pageSize) - 1);
+          if (page > lastPage) {
+            this.loadExpensesPage(tripId, lastPage, pageSize);
+            return;
+          }
+          this.details.update((details) => details ? { ...details, expenses: result.items, expenseTotal: result.total } : details);
+          this.expensePage.set(page);
+          this.expensePageSize.set(pageSize);
+          this.expensesLoading.set(false);
+        },
+        error: (error: unknown) => {
+          this.expensesError.set(describeHttpError(error, 'expense service'));
+          this.expensesLoading.set(false);
+        },
       });
   }
 
