@@ -1,10 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { Claim, ClaimPayload } from '../models/domain.models';
+import { Claim, ClaimPayload, ClaimSummary, PagedResult } from '../models/domain.models';
 import { ApiError, ApiSuccess, runRequest } from './api-callbacks';
-import { CrudHttpService } from './crud-http.service';
+import { CrudHttpService, QueryParams } from './crud-http.service';
 
 @Injectable({ providedIn: 'root' })
 export class ClaimService {
@@ -13,8 +14,17 @@ export class ClaimService {
   private readonly http = inject(HttpClient);
   private readonly endpoint = `${environment.apiBaseUrl}/claims`;
 
+  /** Filters: ownerId (administrators), tripId, status (one or more), page, size, sort. */
+  listClaims(params: QueryParams): Observable<PagedResult<Claim>> {
+    return this.crudHttp.page<Claim>(this.endpoint, params);
+  }
+
+  getSummary(ownerId?: number | null): Observable<ClaimSummary> {
+    return this.crudHttp.fetch<ClaimSummary>(`${this.endpoint}/summary`, { ownerId });
+  }
+
   getClaims(onSuccess?: ApiSuccess<Claim[]>, onError?: ApiError): void {
-    runRequest(this.crudHttp.list<Claim>(this.endpoint), onSuccess, onError);
+    runRequest(this.crudHttp.list<Claim>(this.endpoint, 'Loading claims…'), onSuccess, onError);
   }
 
   submitClaim(payload: ClaimPayload, onSuccess?: ApiSuccess<Claim>, onError?: ApiError): void {

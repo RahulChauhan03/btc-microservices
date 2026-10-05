@@ -41,7 +41,9 @@ public class SecurityConfig {
                 .authorizeExchange(exchange -> exchange
                         // Service-to-service APIs are never routed from outside.
                         .pathMatchers("/*/internal/**").denyAll()
-                        .pathMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                        // Public by design; password recovery is protected by single-use emailed tokens.
+                        .pathMatchers(HttpMethod.POST, "/auth/login", "/auth/forgot-password", "/auth/reset-password")
+                        .permitAll()
                         .pathMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                         .pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/webjars/**", "/v3/api-docs/**",
                                 "/*/v3/api-docs").permitAll()

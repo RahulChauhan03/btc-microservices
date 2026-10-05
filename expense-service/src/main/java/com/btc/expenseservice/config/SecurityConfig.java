@@ -1,5 +1,6 @@
 package com.btc.expenseservice.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Objects;
@@ -7,6 +8,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -31,7 +33,7 @@ public class SecurityConfig {
     private static final int MIN_SECRET_BYTES = 32;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -39,8 +41,13 @@ public class SecurityConfig {
                         .requestMatchers("/error", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         // Claim locks: only claim-service, via a short-lived SERVICE token. Never user tokens.
                         .requestMatchers("/expenses/internal/**").hasRole("SERVICE")
+                        // Administrator-only operations are refused here, before any request body is read.
+                        .requestMatchers(HttpMethod.POST, "/expenses/policies").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/expenses/policies/*").hasRole("ADMIN")
+                        .requestMatchers("/expenses/reports/**", "/expenses/audit-logs", "/expenses/audit-logs/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(roleAuthorities())))
+                .exceptionHandling(errors -> errors.accessDeniedHandler(new JsonAccessDeniedHandler(objectMapper)))
                 .build();
     }
 

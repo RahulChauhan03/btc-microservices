@@ -1,0 +1,139 @@
+<div class="page-grid">
+  <header class="page-toolbar">
+    <div>
+      <span class="page-kicker">Administration</span>
+      <h1>Reports &amp; analytics</h1>
+    </div>
+    <button mat-stroked-button type="button" (click)="exportCsv()" [disabled]="state() !== 'ready' || exporting()">
+      <mat-icon>download</mat-icon>{{ exporting() ? 'Preparing CSV…' : 'Export expenses (CSV)' }}
+    </button>
+  </header>
+
+  <form class="section-card range-card" [formGroup]="form" (ngSubmit)="run()" novalidate>
+    <div class="range-fields">
+      <mat-form-field appearance="outline">
+        <mat-label>From</mat-label>
+        <input matInput type="date" formControlName="from" required />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>To</mat-label>
+        <input matInput type="date" formControlName="to" required />
+      </mat-form-field>
+      <button mat-flat-button type="submit">Apply</button>
+    </div>
+    <div class="presets" role="group" aria-label="Date range presets">
+      @for (preset of presets; track preset.label) {
+        <button mat-button type="button" (click)="applyPreset(preset.months)">{{ preset.label }}</button>
+      }
+    </div>
+    @if (form.hasError('order')) {
+      <p class="form-error" role="alert">“From” must be on or before “To”.</p>
+    } @else if (form.hasError('tooLong')) {
+      <p class="form-error" role="alert">Choose a range of at most two years.</p>
+    }
+  </form>
+
+  @switch (state()) {
+    @case ('loading') {
+      <app-btc-loader message="Building reports…" />
+    }
+    @case ('error') {
+      <div class="section-card empty-state" role="alert">
+        <mat-icon aria-hidden="true">cloud_off</mat-icon>
+        <strong>We couldn’t build the reports</strong>
+        <span>{{ expensesError() }}</span>
+        <span>{{ claimsError() }}</span>
+        <button mat-flat-button type="button" (click)="run()">Try again</button>
+      </div>
+    }
+    @case ('ready') {
+      <section class="metrics-grid" aria-label="Totals">
+        @if (expenses(); as e) {
+          <app-stat-card label="Total spending" [value]="e.total" icon="payments" format="currency" tone="accent"
+            [hint]="(range()?.from | date: 'mediumDate') + ' – ' + (range()?.to | date: 'mediumDate')" />
+          <app-stat-card label="Expenses" [value]="e.count" icon="receipt_long" />
+        }
+        @if (claims(); as c) {
+          <app-stat-card label="Claims submitted" [value]="c.total" icon="fact_check" />
+          <app-stat-card label="Approved claim value" [value]="approvedAmount()" icon="verified" format="currency" />
+        }
+      </section>
+
+      <section class="report-grid">
+        <article class="section-card">
+          <h2>Monthly spending</h2>
+          @if (expenses()) {
+            <app-bar-list [items]="monthBars()" label="Spending by month" />
+          } @else {
+            <p class="section-error" role="alert"><mat-icon aria-hidden="true">cloud_off</mat-icon>{{ expensesError() }}</p>
+          }
+        </article>
+        <article class="section-card">
+          <h2>Spending by category</h2>
+          @if (expenses()) {
+            <app-bar-list [items]="categoryBars()" label="Spending by category" />
+          } @else {
+            <p class="section-error" role="alert"><mat-icon aria-hidden="true">cloud_off</mat-icon>{{ expensesError() }}</p>
+          }
+        </article>
+        <article class="section-card">
+          <h2>Claims by status</h2>
+          @if (claimsError()) {
+            <p class="section-error" role="alert">
+              <mat-icon aria-hidden="true">cloud_off</mat-icon>{{ claimsError() }}
+              <button mat-button type="button" (click)="run()">Retry</button>
+            </p>
+          } @else if (claims()?.byStatus?.length) {
+            <table class="simple-table">
+              <thead><tr><th scope="col">Status</th><th scope="col" class="num">Claims</th><th scope="col" class="num">Amount</th></tr></thead>
+              <tbody>
+                @for (row of claims()!.byStatus; track row.status) {
+                  <tr>
+                    <td><span [class]="statusClass(row.status)">{{ label(row.status) }}</span></td>
+                    <td class="num">{{ row.count }}</td>
+                    <td class="num">{{ row.total | currency: 'USD' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          } @else {
+            <p class="muted">No claims were submitted in this period.</p>
+          }
+        </article>
+      </section>
+
+      <article class="section-card">
+        <h2>Spending by trip</h2>
+        @if (tripsError() || expensesError()) {
+          <p class="section-error" role="alert"><mat-icon aria-hidden="true">cloud_off</mat-icon>{{ tripsError() ?? expensesError() }}</p>
+        } @else if (tripRows().length) {
+          <div class="table-responsive">
+            <table class="simple-table">
+              <thead>
+                <tr><th scope="col">Trip</th><th scope="col">Destination</th><th scope="col" class="num">Expenses</th><th scope="col" class="num">Spent</th><th scope="col" class="num">Budget</th></tr>
+              </thead>
+              <tbody>
+                @for (row of tripRows(); track row.tripId) {
+                  <tr>
+                    <td><a class="text-link" [routerLink]="['/trips/view', row.tripId]">{{ row.trip?.tripCode ?? 'Trip #' + row.tripId }}</a></td>
+                    <td>{{ row.trip?.destination ?? '—' }}</td>
+                    <td class="num">{{ row.count }}</td>
+                    <td class="num">{{ row.total | currency: 'USD' }}</td>
+                    <td class="num">{{ row.trip ? (row.trip.budget | currency: 'USD') : '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="pager">
+            <span>Page {{ tripPage() + 1 }} of {{ tripPages() }}</span>
+            <button mat-stroked-button type="button" (click)="loadTrips(tripPage() - 1)" [disabled]="tripPage() === 0">Previous</button>
+            <button mat-stroked-button type="button" (click)="loadTrips(tripPage() + 1)" [disabled]="tripPage() + 1 >= tripPages()">Next</button>
+          </div>
+        } @else {
+          <p class="muted">No trip-related expenses in this period.</p>
+        }
+      </article>
+    }
+  }
+</div>

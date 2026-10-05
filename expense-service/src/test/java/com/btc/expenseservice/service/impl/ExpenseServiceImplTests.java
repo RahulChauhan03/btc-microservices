@@ -3,13 +3,15 @@ package com.btc.expenseservice.service.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.btc.expenseservice.client.TripClient;
 import com.btc.expenseservice.client.TripClient.TripSummary;
+import com.btc.expenseservice.client.TripClient;
+import com.btc.expenseservice.dto.ExpenseListFilter;
 import com.btc.expenseservice.dto.ExpenseRequestDto;
 import com.btc.expenseservice.entity.Expense;
 import com.btc.expenseservice.exception.ExpenseConflictException;
@@ -25,9 +27,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 
 class ExpenseServiceImplTests {
+
+    private static final ExpenseListFilter NO_FILTER = new ExpenseListFilter(null, null, null, null, null);
 
     private static final CurrentUser OWNER = new CurrentUser(10L, false);
     private static final CurrentUser OTHER = new CurrentUser(20L, false);
@@ -35,7 +40,8 @@ class ExpenseServiceImplTests {
 
     private final ExpenseRepository expenseRepository = mock(ExpenseRepository.class);
     private final TripClient tripClient = mock(TripClient.class);
-    private final ExpenseServiceImpl expenseService = new ExpenseServiceImpl(expenseRepository, tripClient);
+    private final TravelPolicyService travelPolicyService = mock(TravelPolicyService.class);
+    private final ExpenseServiceImpl expenseService = new ExpenseServiceImpl(expenseRepository, travelPolicyService, tripClient);
 
     @BeforeEach
     void setUp() {
@@ -75,16 +81,18 @@ class ExpenseServiceImplTests {
         assertThatThrownBy(() -> expenseService.updateExpense(5L, request(null), OTHER))
                 .isInstanceOf(ExpenseNotFoundException.class);
         assertThatThrownBy(() -> expenseService.deleteExpense(5L, OTHER)).isInstanceOf(ExpenseNotFoundException.class);
-        verify(expenseRepository, never()).delete(any());
+        verify(expenseRepository, never()).delete(any(Expense.class));
     }
 
     @Test
     void adminReadsAllButModifiesOnlyOwnExpenses() {
-        when(expenseRepository.findAll(Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(expense(5L, OWNER.id()), expense(6L, OTHER.id()))));
-        when(expenseRepository.findAllByOwnerId(OWNER.id(), Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(expense(5L, OWNER.id()))));
+        when(expenseRepository.findAll(any(Specification.class), eq(Pageable.unpaged())))
+                .thenReturn(new PageImpl<>(List.of(expense(5L, OWNER.id()), expense(6L, OTHER.id()))));
 
-        assertThat(expenseService.getAllExpenses(ADMIN, null, Pageable.unpaged())).hasSize(2);
-        assertThat(expenseService.getAllExpenses(OWNER, null, Pageable.unpaged())).hasSize(1);
+        assertThat(expenseService.getAllExpenses(ADMIN, NO_FILTER, Pageable.unpaged())).hasSize(2);
+        assertThatThrownBy(() -> expenseService.getAllExpenses(OWNER,
+                new ExpenseListFilter(OTHER.id(), null, null, null, null), Pageable.unpaged()))
+                .isInstanceOf(AccessDeniedException.class);
         assertThat(expenseService.getExpenseById(5L, ADMIN).getId()).isEqualTo(5L);
         assertThatThrownBy(() -> expenseService.deleteExpense(5L, ADMIN)).isInstanceOf(AccessDeniedException.class);
     }
@@ -99,7 +107,7 @@ class ExpenseServiceImplTests {
                 .isInstanceOf(ExpenseConflictException.class);
         assertThatThrownBy(() -> expenseService.deleteExpense(9L, OWNER)).isInstanceOf(ExpenseConflictException.class);
         verify(expenseRepository, never()).save(any());
-        verify(expenseRepository, never()).delete(any());
+        verify(expenseRepository, never()).delete(any(Expense.class));
     }
 
     private static ExpenseRequestDto request(Long tripId) {

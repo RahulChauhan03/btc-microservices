@@ -1,21 +1,24 @@
-<mat-card class="stat-card" [class.accent]="tone() === 'accent'">
-  <div class="icon-wrap">
-    <mat-icon>{{ icon() }}</mat-icon>
-  </div>
-  <div class="stat-copy">
+<div class="stat-card" [class.accent]="tone() === 'accent'">
+  <div class="stat-head">
     <p>{{ label() }}</p>
-    <div class="stat-value">
-      @switch (format()) {
-        @case ('currency') {
-          <h2>{{ value() | currency: 'USD' : 'symbol' : '1.0-0' }}</h2>
-        }
-        @case ('percent') {
-          <h2>{{ value() / 100 | percent: '1.0-0' }}</h2>
-        }
-        @default {
-          <h2>{{ value() }}</h2>
-        }
-      }
-    </div>
+    <span class="icon-wrap" aria-hidden="true">
+      <mat-icon>{{ icon() }}</mat-icon>
+    </span>
   </div>
-</mat-card>
+  <p class="stat-value">
+    @switch (format()) {
+      @case ('currency') {
+        {{ value() | currency: 'USD' : 'symbol' : '1.0-0' }}
+      }
+      @case ('percent') {
+        {{ value() / 100 | percent: '1.0-0' }}
+      }
+      @default {
+        {{ value() }}
+      }
+    }
+  </p>
+  @if (hint()) {
+    <p class="stat-hint">{{ hint() }}</p>
+  }
+</div>

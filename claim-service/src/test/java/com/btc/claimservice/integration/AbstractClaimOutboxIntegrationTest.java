@@ -1,7 +1,10 @@
 package com.btc.claimservice.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -11,9 +14,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.btc.claimservice.client.ExpenseLockClient;
+import com.btc.claimservice.client.NotificationClient;
+import com.btc.claimservice.client.NotificationMessage;
 import com.btc.claimservice.entity.Claim;
 import com.btc.claimservice.exception.DependencyUnavailableException;
 import com.btc.claimservice.exception.ExpenseServiceRejectedException;
+import com.btc.claimservice.exception.PermanentDeliveryException;
 import com.btc.claimservice.outbox.ClaimOutbox;
 import com.btc.claimservice.outbox.OutboxConfig;
 import com.btc.claimservice.outbox.OutboxEvent;
@@ -25,6 +31,7 @@ import com.btc.claimservice.outbox.OutboxProperties;
 import com.btc.claimservice.outbox.OutboxStatus;
 import com.btc.claimservice.repository.ClaimRepository;
 import com.btc.claimservice.security.TestJwt;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -120,6 +127,12 @@ abstract class AbstractClaimOutboxIntegrationTest {
 
     @MockitoBean
     private ExpenseLockClient expenseLockClient;
+
+    @MockitoBean
+    private NotificationClient notificationClient;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @BeforeEach
     void resetClock() {
@@ -267,6 +280,42 @@ abstract class AbstractClaimOutboxIntegrationTest {
     }
 
     @Test
+    void notificationsAreDeliveredWithTheirOutboxEventIdAndNeverTriggerAReleaseOrItsGuard() {
+        Long claimId = claimRepository.save(Claim.builder().claimNumber("C-NOTIFY").title("t")
+                .claimAmount(BigDecimal.TEN).status("APPROVED").ownerId(10L)
+                .expenseIds(new LinkedHashSet<>(List.of(1L))).build()).getId();
+        String eventId = new TransactionTemplate(transactionManager).execute(status -> claimOutbox.enqueueNotification(
+                claimId, NotificationMessage.toUser(10L, 1L, "CLAIM_APPROVED", "Claim approved", "Approved.", "/claims")));
+        doThrow(new DependencyUnavailableException("Notification service is unavailable", null))
+                .doNothing().when(notificationClient).publish(eq(eventId), any());
+
+        processor.processDue();
+        assertThat(outboxEventRepository.findByEventId(eventId).orElseThrow().getStatus()).isEqualTo(OutboxStatus.PENDING);
+        clock.advance(properties.initialBackoff());
+        processor.processDue();
+
+        assertThat(outboxEventRepository.findByEventId(eventId).orElseThrow().getStatus()).isEqualTo(OutboxStatus.COMPLETED);
+        verify(notificationClient, times(2)).publish(eq(eventId), argThat(message -> "USER".equals(message.audience())
+                && Long.valueOf(10L).equals(message.recipientId()) && "Claim approved".equals(message.title())));
+        verify(expenseLockClient, never()).releaseClaim(anyLong());
+    }
+
+    @Test
+    void refusedNotificationFailsWithoutAffectingExpenseLocks() {
+        String eventId = new TransactionTemplate(transactionManager).execute(status -> claimOutbox.enqueueNotification(
+                9300L, NotificationMessage.toAdmins(10L, "CLAIM_SUBMITTED", "New claim", "Waiting.", "/claims")));
+        doThrow(new PermanentDeliveryException("Notification service refused the event: HTTP 400", null))
+                .when(notificationClient).publish(eq(eventId), any());
+
+        processor.processDue();
+
+        OutboxEvent failed = outboxEventRepository.findByEventId(eventId).orElseThrow();
+        assertThat(failed.getStatus()).isEqualTo(OutboxStatus.FAILED);
+        assertThat(failed.getLastError()).contains("HTTP 400");
+        verify(expenseLockClient, never()).releaseClaim(anyLong());
+    }
+
+    @Test
     void permanentRefusalFailsImmediately() {
         Long id = enqueue(9007L);
         doThrow(new ExpenseServiceRejectedException("Expense service refused the release: HTTP 403", null))
@@ -335,7 +384,8 @@ abstract class AbstractClaimOutboxIntegrationTest {
     }
 
     private OutboxProcessor newProcessor() {
-        return new OutboxProcessor(outboxEventRepository, claimRepository, expenseLockClient, transactionManager,
+        return new OutboxProcessor(outboxEventRepository, claimRepository, expenseLockClient, notificationClient,
+                objectMapper, transactionManager,
                 clock, properties, metrics);
     }
 

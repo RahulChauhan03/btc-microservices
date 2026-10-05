@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -12,16 +13,20 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.btc.claimservice.client.ExpenseLockClient;
+import com.btc.claimservice.audit.AuditService;
 import com.btc.claimservice.client.ExpenseLockClient.ExpenseSummary;
+import com.btc.claimservice.client.ExpenseLockClient;
+import com.btc.claimservice.dto.ClaimListFilter;
 import com.btc.claimservice.dto.ClaimRequestDto;
 import com.btc.claimservice.dto.ClaimResponseDto;
 import com.btc.claimservice.entity.Claim;
 import com.btc.claimservice.exception.ClaimNotFoundException;
 import com.btc.claimservice.exception.InvalidClaimException;
 import com.btc.claimservice.exception.InvalidClaimStateException;
+import com.btc.claimservice.exception.InvalidRequestException;
 import com.btc.claimservice.outbox.ClaimOutbox;
 import com.btc.claimservice.outbox.OutboxEventType;
+import com.btc.claimservice.reimbursement.ReimbursementService;
 import com.btc.claimservice.repository.ClaimRepository;
 import com.btc.claimservice.security.CurrentUser;
 import java.math.BigDecimal;
@@ -33,6 +38,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 
 /** Business rules in isolation; lock releases are recorded in the (mocked) claim outbox. */
@@ -46,7 +52,10 @@ class ClaimServiceImplTests {
     private final ClaimRepository claimRepository = mock(ClaimRepository.class);
     private final ExpenseLockClient expenseLockClient = mock(ExpenseLockClient.class);
     private final ClaimOutbox claimOutbox = mock(ClaimOutbox.class);
-    private final ClaimServiceImpl claimService = new ClaimServiceImpl(claimRepository, expenseLockClient, claimOutbox);
+    private final ReimbursementService reimbursementService = mock(ReimbursementService.class);
+    private final AuditService auditService = mock(AuditService.class);
+    private final ClaimServiceImpl claimService =
+            new ClaimServiceImpl(claimRepository, expenseLockClient, claimOutbox, reimbursementService, auditService);
 
     @BeforeEach
     void setUp() {
@@ -122,7 +131,22 @@ class ClaimServiceImplTests {
         assertThat(approved.getStatus()).isEqualTo("APPROVED");
         assertThat(approved.getReviewedBy()).isEqualTo(ADMIN.id());
         verify(expenseLockClient, never()).releaseClaim(anyLong());
-        verifyNoInteractions(claimOutbox);
+        verify(claimOutbox, never()).enqueueRelease(any(), anyLong(), any());
+        verify(reimbursementService).openFor(any(Claim.class), eq(ADMIN.id()));
+        verify(auditService).record(eq(ADMIN.id()), eq("CLAIM_APPROVED"), eq("CLAIM"), eq(7L), any());
+        verify(claimOutbox).enqueueNotification(eq(7L), argThat(message -> "USER".equals(message.audience())
+                && OWNER.id().equals(message.recipientId()) && "CLAIM_APPROVED".equals(message.type())));
+    }
+
+    @Test
+    void submittingAClaimNotifiesAdministrators() {
+        locks(NEW_CLAIM_ID, summary(1L, OWNER.id(), 100L, "12.00"));
+
+        claimService.createClaim(request(1L), OWNER);
+
+        verify(claimOutbox).enqueueNotification(eq(NEW_CLAIM_ID), argThat(message -> "ADMINS".equals(message.audience())
+                && message.recipientId() == null && OWNER.id().equals(message.actorId())
+                && message.message().contains("$12.00")));
     }
 
     @Test
@@ -152,7 +176,7 @@ class ClaimServiceImplTests {
         assertThatThrownBy(() -> claimService.deleteClaim(7L, OWNER)).isInstanceOf(InvalidClaimStateException.class);
         assertThatThrownBy(() -> claimService.approveClaim(9L, ADMIN))
                 .as("legacy claim without server-calculated amount").isInstanceOf(InvalidClaimStateException.class);
-        verify(claimRepository, never()).delete(any());
+        verify(claimRepository, never()).delete(any(Claim.class));
         verify(expenseLockClient, never()).releaseClaim(anyLong());
         verifyNoInteractions(claimOutbox);
     }
@@ -182,14 +206,15 @@ class ClaimServiceImplTests {
 
     @Test
     void listsAreScopedToOwnerExceptForAdmin() {
-        when(claimRepository.findAllByOwnerId(OWNER.id(), Pageable.unpaged())).thenReturn(new PageImpl<>(List.of()));
-        when(claimRepository.findAll(Pageable.unpaged())).thenReturn(new PageImpl<>(List.of()));
+        when(claimRepository.findAll(any(Specification.class), eq(Pageable.unpaged()))).thenReturn(new PageImpl<>(List.of()));
 
-        claimService.getAllClaims(OWNER, Pageable.unpaged());
-        claimService.getAllClaims(ADMIN, Pageable.unpaged());
+        claimService.getAllClaims(OWNER, new ClaimListFilter(null, null, null), Pageable.unpaged());
+        claimService.getAllClaims(ADMIN, new ClaimListFilter(OTHER.id(), null, List.of("submitted")), Pageable.unpaged());
 
-        verify(claimRepository).findAllByOwnerId(OWNER.id(), Pageable.unpaged());
-        verify(claimRepository).findAll(Pageable.unpaged());
+        assertThatThrownBy(() -> claimService.getAllClaims(OWNER, new ClaimListFilter(OTHER.id(), null, null), Pageable.unpaged()))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> claimService.getAllClaims(ADMIN, new ClaimListFilter(null, null, List.of("PAID")), Pageable.unpaged()))
+                .isInstanceOf(InvalidRequestException.class);
     }
 
     private void locks(long claimId, ExpenseSummary... summaries) {

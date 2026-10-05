@@ -22,6 +22,7 @@ import {
   DataTableColumn,
   DataTableComponent,
 } from '../../../../shared/components/data-table/data-table.component';
+import { StatCardComponent } from '../../../../shared/components/stat-card/stat-card.component';
 
 @Component({
   selector: 'app-claim-management',
@@ -37,6 +38,7 @@ import {
     MatSelectModule,
     RouterLink,
     DataTableComponent,
+    StatCardComponent,
   ],
   templateUrl: './claim-management.component.html',
   styleUrl: './claim-management.component.css',

@@ -1,0 +1,139 @@
+<div class="page-grid">
+  <header class="page-toolbar">
+    <div>
+      <span class="page-kicker">Company rules</span>
+      <h1>Travel policy</h1>
+      <p class="muted">Expenses that break the policy for their date are refused when they are saved.</p>
+    </div>
+    @if (isAdmin() && editing() === null) {
+      <button mat-flat-button type="button" (click)="startNew()"><mat-icon>add</mat-icon>New policy</button>
+    }
+  </header>
+
+  @if (editing() !== null) {
+    <form class="section-card form-page-card" [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <div class="card-head">
+        <div>
+          <h2>{{ editing() ? 'Edit policy' : 'New policy' }}</h2>
+          <p>Amounts are in USD, the currency expenses are recorded in. Leave a limit empty for no limit.</p>
+        </div>
+      </div>
+      @if (formError()) {
+        <div class="auth-alert error" role="alert"><mat-icon aria-hidden="true">error_outline</mat-icon><span>{{ formError() }}</span></div>
+      }
+      <div class="form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Name</mat-label>
+          <input matInput formControlName="name" required />
+          @if (form.controls.name.hasError('required')) { <mat-error>Enter a name.</mat-error> }
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Effective from</mat-label>
+          <input matInput type="date" formControlName="effectiveFrom" required />
+          @if (form.controls.effectiveFrom.hasError('required')) { <mat-error>Choose a start date.</mat-error> }
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Effective to (optional)</mat-label>
+          <input matInput type="date" formControlName="effectiveTo" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Trip spending limit (USD)</mat-label>
+          <input matInput type="number" min="0.01" step="0.01" formControlName="tripLimit" />
+          @if (form.controls.tripLimit.hasError('amount')) { <mat-error>Enter a positive amount with up to 2 decimals.</mat-error> }
+        </mat-form-field>
+      </div>
+      @if (form.hasError('period')) {
+        <p class="form-error" role="alert">“Effective to” must be on or after “Effective from”.</p>
+      }
+      <fieldset class="limits" formGroupName="limits">
+        <legend>Per-expense limit by category (USD)</legend>
+        <div class="form-grid">
+          @for (category of categories; track category.key) {
+            <mat-form-field appearance="outline">
+              <mat-label>{{ category.label }}</mat-label>
+              <input matInput type="number" min="0.01" step="0.01" [formControlName]="category.key" />
+              @if (form.controls.limits.get(category.key)?.hasError('amount')) { <mat-error>Positive, up to 2 decimals.</mat-error> }
+            </mat-form-field>
+          }
+        </div>
+      </fieldset>
+      <div class="action-row">
+        <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
+        <button mat-flat-button type="submit" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Save policy' }}</button>
+      </div>
+    </form>
+  }
+
+  @switch (state()) {
+    @case ('loading') {
+      <app-btc-loader message="Loading travel policy…" />
+    }
+    @case ('error') {
+      <div class="section-card empty-state" role="alert">
+        <mat-icon aria-hidden="true">cloud_off</mat-icon>
+        <strong>We couldn’t load the travel policy</strong>
+        <span>{{ loadError() }}</span>
+        <button mat-flat-button type="button" (click)="load()">Try again</button>
+      </div>
+    }
+    @case ('ready') {
+      @if (current(); as policy) {
+        <article class="section-card">
+          <div class="card-head">
+            <div>
+              <span class="status-badge status-approved">In effect</span>
+              <h2>{{ policy.name }}</h2>
+              <p>Since {{ policy.effectiveFrom | date: 'mediumDate' }}{{ policy.effectiveTo ? ' until ' + (policy.effectiveTo | date: 'mediumDate') : '' }}</p>
+            </div>
+            @if (isAdmin()) {
+              <button mat-stroked-button type="button" (click)="edit(policy)"><mat-icon>edit</mat-icon>Edit</button>
+            }
+          </div>
+          <dl class="limits-list">
+            <div><dt>Trip spending limit</dt><dd>{{ policy.tripLimit !== null ? (policy.tripLimit | currency: policy.currency) : 'No limit' }}</dd></div>
+            @for (category of categories; track category.key) {
+              <div>
+                <dt>{{ category.label }} (per expense)</dt>
+                <dd>{{ policy.categoryLimits[category.key] !== undefined ? (policy.categoryLimits[category.key] | currency: policy.currency) : 'No limit' }}</dd>
+              </div>
+            }
+          </dl>
+        </article>
+      } @else {
+        <div class="section-card empty-state">
+          <mat-icon aria-hidden="true">policy</mat-icon>
+          <strong>No travel policy is in effect today</strong>
+          <span>Expenses are not limited until a policy is published.</span>
+        </div>
+      }
+
+      @if (others().length) {
+        <article class="section-card">
+          <h2>Other policies</h2>
+          <div class="table-responsive">
+            <table class="simple-table">
+              <thead><tr><th scope="col">Name</th><th scope="col">Period</th><th scope="col" class="num">Trip limit</th><th scope="col">Limits</th>@if (isAdmin()) {<th scope="col"><span class="visually-hidden">Actions</span></th>}</tr></thead>
+              <tbody>
+                @for (policy of others(); track policy.id) {
+                  <tr>
+                    <td>{{ policy.name }}</td>
+                    <td>{{ policy.effectiveFrom | date: 'mediumDate' }} – {{ policy.effectiveTo ? (policy.effectiveTo | date: 'mediumDate') : 'open-ended' }}</td>
+                    <td class="num">{{ policy.tripLimit !== null ? (policy.tripLimit | currency: policy.currency) : '—' }}</td>
+                    <td>
+                      @for (limit of policy.categoryLimits | keyvalue; track limit.key) {
+                        <span class="chip">{{ categoryLabel(limit.key) }} {{ limit.value | currency: policy.currency }}</span>
+                      } @empty { — }
+                    </td>
+                    @if (isAdmin()) {
+                      <td><button mat-button type="button" (click)="edit(policy)" [attr.aria-label]="'Edit ' + policy.name">Edit</button></td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+      }
+    }
+  }
+</div>

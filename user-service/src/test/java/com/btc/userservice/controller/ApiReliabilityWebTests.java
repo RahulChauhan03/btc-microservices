@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.btc.userservice.audit.AuditService;
 import com.btc.userservice.config.JwtConfig;
 import com.btc.userservice.config.SecurityConfig;
 import com.btc.userservice.entity.User;
@@ -23,6 +24,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -44,11 +46,14 @@ class ApiReliabilityWebTests {
     private MockMvc mockMvc;
 
     @MockitoBean
+    private AuditService auditService;
+
+    @MockitoBean
     private UserRepository userRepository;
 
     @Test
     void listReturnsArrayWithTotalCountHeader() throws Exception {
-        when(userRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(
+        when(userRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(new PageImpl<>(
                 List.of(User.builder().id(3L).name("C").build()), PageRequest.of(1, 1), 5));
 
         mockMvc.perform(get("/users?page=1&size=1&sort=name,desc").header(HttpHeaders.AUTHORIZATION, TestJwt.bearer(1, "ADMIN")))

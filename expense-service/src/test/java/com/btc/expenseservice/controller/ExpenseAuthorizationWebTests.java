@@ -1,5 +1,6 @@
 package com.btc.expenseservice.controller;
 
+import com.btc.expenseservice.service.impl.TravelPolicyService;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -38,6 +39,9 @@ class ExpenseAuthorizationWebTests {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private TravelPolicyService travelPolicyService;
 
     @MockitoBean
     private ExpenseRepository expenseRepository;

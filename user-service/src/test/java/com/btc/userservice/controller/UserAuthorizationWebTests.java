@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.btc.userservice.audit.AuditService;
 import com.btc.userservice.config.JwtConfig;
 import com.btc.userservice.config.SecurityConfig;
 import com.btc.userservice.entity.User;
@@ -22,9 +23,10 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -49,6 +51,9 @@ class UserAuthorizationWebTests {
     private MockMvc mockMvc;
 
     @MockitoBean
+    private AuditService auditService;
+
+    @MockitoBean
     private UserRepository userRepository;
 
     @Test
@@ -66,12 +71,12 @@ class UserAuthorizationWebTests {
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/users/3").header(HttpHeaders.AUTHORIZATION, employee))
                 .andExpect(status().isForbidden());
-        verify(userRepository, never()).delete(any());
+        verify(userRepository, never()).delete(any(User.class));
     }
 
     @Test
     void adminCanListUsers() throws Exception {
-        when(userRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(User.builder().id(2L).name("Emp").role("EMPLOYEE").build())));
+        when(userRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(User.builder().id(2L).name("Emp").role("EMPLOYEE").build())));
 
         mockMvc.perform(get("/users").header(HttpHeaders.AUTHORIZATION, TestJwt.bearer(1, "ADMIN")))
                 .andExpect(status().isOk())

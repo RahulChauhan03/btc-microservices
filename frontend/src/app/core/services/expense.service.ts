@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { Expense, ExpensePayload } from '../models/domain.models';
+import { Expense, ExpensePayload, ExpenseSummary, PagedResult } from '../models/domain.models';
 import { ApiError, ApiSuccess, runRequest } from './api-callbacks';
-import { CrudHttpService } from './crud-http.service';
+import { CrudHttpService, QueryParams } from './crud-http.service';
 
 @Injectable({ providedIn: 'root' })
 export class ExpenseService {
@@ -11,8 +12,18 @@ export class ExpenseService {
 
   private readonly endpoint = `${environment.apiBaseUrl}/expenses`;
 
+  /** Filters: tripId, ownerId (administrators), category, from, to, page, size, sort. */
+  listExpenses(params: QueryParams): Observable<PagedResult<Expense>> {
+    return this.crudHttp.page<Expense>(this.endpoint, params);
+  }
+
+  /** Totals by category and month, computed by expense-service; params: ownerId, tripId, from, to. */
+  getSummary(params: QueryParams = {}): Observable<ExpenseSummary> {
+    return this.crudHttp.fetch<ExpenseSummary>(`${this.endpoint}/summary`, params);
+  }
+
   getExpenses(onSuccess?: ApiSuccess<Expense[]>, onError?: ApiError): void {
-    runRequest(this.crudHttp.list<Expense>(this.endpoint), onSuccess, onError);
+    runRequest(this.crudHttp.list<Expense>(this.endpoint, 'Loading expenses…'), onSuccess, onError);
   }
 
   createExpense(payload: ExpensePayload, onSuccess?: ApiSuccess<Expense>, onError?: ApiError): void {

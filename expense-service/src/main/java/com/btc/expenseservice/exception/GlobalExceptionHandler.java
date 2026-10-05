@@ -33,6 +33,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDto> handleExpenseNotFoundException(ExpenseNotFoundException exception, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request);
     }
+    @ExceptionHandler(PolicyViolationException.class)
+    public ResponseEntity<ErrorResponseDto> handlePolicyViolation(PolicyViolationException exception, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(PolicyNotFoundException.class)
+    public ResponseEntity<ErrorResponseDto> handlePolicyNotFound(PolicyNotFoundException exception, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request);
+    }
+
     @ExceptionHandler(InvalidExpenseException.class)
     public ResponseEntity<ErrorResponseDto> handleInvalidExpenseException(InvalidExpenseException exception, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);

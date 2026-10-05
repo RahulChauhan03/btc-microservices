@@ -1,98 +1,100 @@
-<mat-sidenav-container
-  class="shell-container"
-  [class.sidebar-is-open]="sidebarOpen()"
-  [class.sidebar-is-closed]="!sidebarOpen()"
->
+<mat-sidenav-container class="shell">
   <mat-sidenav
+    class="sidebar"
     [mode]="isMobile() ? 'over' : 'side'"
     [opened]="sidebarOpen()"
-    class="sidebar"
     (closedStart)="sidebarOpen.set(false)"
   >
-    <div class="sidebar-content">
-      <div class="brand-wrap">
-        <div class="brand">
-          <div class="brand-mark">
-            <mat-icon>bolt</mat-icon>
-          </div>
-          <div>
-            <strong>BTC Flow</strong>
-            <span>Travel Ops Cloud</span>
-          </div>
-        </div>
-        <div class="sidebar-summary">
-          <span class="sidebar-chip">2026 workspace</span>
-          <p>Trips, expenses, and approvals moving in one live command view.</p>
-        </div>
-      </div>
+    <div class="sidebar-inner">
+      <a class="brand" routerLink="/dashboard" (click)="closeOnMobile()">
+        <app-brand-mark [size]="32" />
+        <span>
+          <strong>BTC Flow</strong>
+          <small>Travel &amp; expenses</small>
+        </span>
+      </a>
 
-      <mat-nav-list class="nav-list">
-        @for (item of navItems; track item.route) {
-          @if (!item.adminOnly || user()?.role === 'ADMIN') {
+      <nav aria-label="Main">
+        <mat-nav-list class="nav-list">
+          @for (item of visibleNavItems(); track item.route) {
             <a
               mat-list-item
               class="nav-link"
               [routerLink]="item.route"
-              routerLinkActive="active-link"
+              routerLinkActive="active"
+              #rla="routerLinkActive"
+              [attr.aria-current]="rla.isActive ? 'page' : null"
               (click)="closeOnMobile()"
             >
-              <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-              <span matListItemTitle class="label">{{ item.label }}</span>
+              <mat-icon matListItemIcon aria-hidden="true">{{ item.icon }}</mat-icon>
+              <span matListItemTitle>{{ item.label }}</span>
             </a>
           }
-        }
-      </mat-nav-list>
+        </mat-nav-list>
+      </nav>
 
-      <div class="sidebar-footer">
-        <span class="footer-label">Active profile</span>
-        <div class="profile-row">
-          <div class="profile-avatar">{{ user()?.name?.charAt(0) || 'U' }}</div>
-          <div>
-            <strong>{{ user()?.name }}</strong>
-            <small>{{ user()?.role }}</small>
-          </div>
-        </div>
-        <button mat-button class="logout-button" type="button" (click)="logout()">
-          <mat-icon>logout</mat-icon>
-          <span>Logout</span>
-        </button>
+      <div class="sidebar-user">
+        <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+        <span class="user-copy">
+          <strong>{{ user()?.name }}</strong>
+          <small>{{ roleLabel() }}</small>
+        </span>
       </div>
     </div>
   </mat-sidenav>
 
-  <mat-sidenav-content>
-    <mat-toolbar class="toolbar">
+  <mat-sidenav-content class="main">
+    <header class="topbar">
       <button
         mat-icon-button
-        class="menu-toggle"
         type="button"
         (click)="toggleSidebar()"
-        aria-label="Toggle sidebar"
+        [attr.aria-label]="sidebarOpen() ? 'Hide navigation' : 'Show navigation'"
+        [attr.aria-expanded]="sidebarOpen()"
       >
-        <mat-icon>{{ sidebarOpen() ? 'menu_open' : 'menu' }}</mat-icon>
+        <mat-icon>{{ sidebarOpen() && !isMobile() ? 'menu_open' : 'menu' }}</mat-icon>
       </button>
 
-      @if (!isMobile() && !sidebarOpen()) {
-        <div class="toolbar-copy">
-        <span class="title">BTC Flow</span>
-        <small>Travel Ops Cloud</small>
-      </div>
-      }
+      <span class="section-title">{{ sectionTitle() }}</span>
+      <span class="spacer"></span>
 
-      <div class="toolbar-live">
-        <span class="pulse-dot"></span>
-        <span>Live ops</span>
-      </div>
+      <a
+        mat-icon-button
+        routerLink="/notifications"
+        class="bell"
+        [attr.aria-label]="unread() ? 'Notifications, ' + unread() + ' unread' : 'Notifications'"
+      >
+        <mat-icon>{{ unread() ? 'notifications_active' : 'notifications_none' }}</mat-icon>
+        @if (unread()) {
+          <span class="badge" aria-hidden="true">{{ unread() > 99 ? '99+' : unread() }}</span>
+        }
+      </a>
 
-      <span class="toolbar-spacer"></span>
+      <button mat-button type="button" class="profile-button" [matMenuTriggerFor]="profileMenu" aria-label="Account menu">
+        <span class="avatar small" aria-hidden="true">{{ initials() }}</span>
+        <span class="profile-name">{{ user()?.name }}</span>
+        <mat-icon iconPositionEnd aria-hidden="true">expand_more</mat-icon>
+      </button>
+      <mat-menu #profileMenu="matMenu" xPosition="before">
+        <div class="menu-identity" role="presentation">
+          <strong>{{ user()?.name }}</strong>
+          <small>{{ user()?.email }}</small>
+          <span [class]="'status-badge status-' + (user()?.role ?? '').toLowerCase()">
+            {{ roleLabel() }}
+          </span>
+        </div>
+        <a mat-menu-item routerLink="/profile">
+          <mat-icon>manage_accounts</mat-icon>
+          <span>Profile &amp; settings</span>
+        </a>
+        <button mat-menu-item type="button" (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Sign out</span>
+        </button>
+      </mat-menu>
+    </header>
 
-      <div class="toolbar-user">
-        <span>{{ user()?.role }}</span>
-        <div>{{ user()?.name?.charAt(0) || 'U' }}</div>
-      </div>
-    </mat-toolbar>
-
-    <main class="content">
+    <main class="content" id="main-content">
       <router-outlet />
     </main>
   </mat-sidenav-content>

@@ -1,9 +1,13 @@
 package com.btc.claimservice.outbox;
 
 import com.btc.claimservice.client.ExpenseLockClient;
+import com.btc.claimservice.client.NotificationClient;
+import com.btc.claimservice.client.NotificationMessage;
 import com.btc.claimservice.entity.ClaimStatus;
-import com.btc.claimservice.exception.ExpenseServiceRejectedException;
+import com.btc.claimservice.exception.PermanentDeliveryException;
 import com.btc.claimservice.repository.ClaimRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -36,6 +40,8 @@ public class OutboxProcessor {
     private final OutboxEventRepository repository;
     private final ClaimRepository claimRepository;
     private final ExpenseLockClient expenseLockClient;
+    private final NotificationClient notificationClient;
+    private final ObjectMapper objectMapper;
     private final TransactionTemplate transaction;
     private final Clock clock;
     private final OutboxProperties properties;
@@ -43,8 +49,11 @@ public class OutboxProcessor {
     private final String workerId = "claim-service-" + UUID.randomUUID();
 
     public OutboxProcessor(OutboxEventRepository repository, ClaimRepository claimRepository,
-                           ExpenseLockClient expenseLockClient, PlatformTransactionManager transactionManager,
+                           ExpenseLockClient expenseLockClient, NotificationClient notificationClient,
+                           ObjectMapper objectMapper, PlatformTransactionManager transactionManager,
                            Clock clock, OutboxProperties properties, OutboxMetrics metrics) {
+        this.notificationClient = notificationClient;
+        this.objectMapper = objectMapper;
         this.repository = repository;
         this.claimRepository = claimRepository;
         this.expenseLockClient = expenseLockClient;
@@ -81,13 +90,17 @@ public class OutboxProcessor {
         }
 
         try {
-            Optional<String> refusal = releaseRefusal(event);
-            if (refusal.isPresent()) {
-                markFailed(event, refusal.get());
-                return true;
+            if (event.getEventType().isRelease()) {
+                Optional<String> refusal = releaseRefusal(event);
+                if (refusal.isPresent()) {
+                    markFailed(event, refusal.get());
+                    return true;
+                }
+                expenseLockClient.releaseClaim(event.getClaimId());
+            } else {
+                notificationClient.publish(event.getEventId(), readPayload(event));
             }
-            expenseLockClient.releaseClaim(event.getClaimId());
-        } catch (ExpenseServiceRejectedException exception) {
+        } catch (PermanentDeliveryException exception) {
             markFailed(event, describe(exception));
             return true;
         } catch (RuntimeException exception) {
@@ -96,6 +109,14 @@ public class OutboxProcessor {
         }
         markCompleted(event);
         return true;
+    }
+
+    private NotificationMessage readPayload(OutboxEvent event) {
+        try {
+            return objectMapper.readValue(event.getPayload(), NotificationMessage.class);
+        } catch (JsonProcessingException | IllegalArgumentException exception) {
+            throw new PermanentDeliveryException("Notification payload is unreadable", exception);
+        }
     }
 
     String workerId() {
@@ -137,10 +158,11 @@ public class OutboxProcessor {
     private void markFailed(OutboxEvent event, String error) {
         if (update(() -> repository.fail(event.getId(), workerId, now(), error))) {
             metrics.recordFailed();
-            log.error("Claim outbox event {} ({} of claim {}) FAILED after {} attempt(s): {}. Expenses {} stay locked "
-                            + "until it is retried (docs/operations/phase-5-claim-outbox.md)",
+            log.error("Claim outbox event {} ({} of claim {}) FAILED after {} attempt(s): {}. {} until it is retried "
+                            + "(docs/operations/phase-5-claim-outbox.md)",
                     event.getEventId(), event.getEventType(), event.getClaimId(), event.getAttempts(), error,
-                    event.getExpenseIds());
+                    event.getEventType().isRelease() ? "Expenses " + event.getExpenseIds() + " stay locked"
+                            : "The notification is not delivered");
         }
     }
 

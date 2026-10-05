@@ -11,11 +11,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.btc.claimservice.client.ExpenseLockClient;
+import com.btc.claimservice.audit.AuditService;
 import com.btc.claimservice.client.ExpenseLockClient.ExpenseSummary;
-import com.btc.claimservice.outbox.ClaimOutbox;
+import com.btc.claimservice.client.ExpenseLockClient;
 import com.btc.claimservice.config.SecurityConfig;
 import com.btc.claimservice.entity.Claim;
+import com.btc.claimservice.outbox.ClaimOutbox;
+import com.btc.claimservice.reimbursement.ReimbursementService;
 import com.btc.claimservice.repository.ClaimRepository;
 import com.btc.claimservice.security.TestJwt;
 import com.btc.claimservice.service.impl.ClaimServiceImpl;
@@ -55,6 +57,12 @@ class ClaimAuthorizationWebTests {
 
     @MockitoBean
     private ClaimOutbox claimOutbox;
+
+    @MockitoBean
+    private ReimbursementService reimbursementService;
+
+    @MockitoBean
+    private AuditService auditService;
 
     @Test
     void clientSuppliedAmountStatusOwnerAndReviewerAreIgnored() throws Exception {

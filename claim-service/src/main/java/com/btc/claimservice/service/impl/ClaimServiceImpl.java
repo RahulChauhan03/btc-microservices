@@ -1,31 +1,41 @@
 package com.btc.claimservice.service.impl;
 
-import com.btc.claimservice.client.ExpenseLockClient;
+import com.btc.claimservice.audit.AuditService;
 import com.btc.claimservice.client.ExpenseLockClient.ExpenseSummary;
+import com.btc.claimservice.client.ExpenseLockClient;
+import com.btc.claimservice.client.NotificationMessage;
+import com.btc.claimservice.dto.ClaimListFilter;
 import com.btc.claimservice.dto.ClaimRequestDto;
 import com.btc.claimservice.dto.ClaimResponseDto;
+import com.btc.claimservice.dto.ClaimStatusTotalDto;
+import com.btc.claimservice.dto.ClaimSummaryDto;
 import com.btc.claimservice.entity.Claim;
 import com.btc.claimservice.entity.ClaimStatus;
 import com.btc.claimservice.exception.ClaimNotFoundException;
 import com.btc.claimservice.exception.DuplicateClaimException;
 import com.btc.claimservice.exception.InvalidClaimException;
 import com.btc.claimservice.exception.InvalidClaimStateException;
+import com.btc.claimservice.exception.InvalidRequestException;
 import com.btc.claimservice.outbox.ClaimOutbox;
 import com.btc.claimservice.outbox.OutboxEventType;
+import com.btc.claimservice.reimbursement.ReimbursementService;
 import com.btc.claimservice.repository.ClaimRepository;
 import com.btc.claimservice.security.CurrentUser;
 import com.btc.claimservice.service.ClaimService;
 import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +70,8 @@ public class ClaimServiceImpl implements ClaimService {
     private final ClaimRepository claimRepository;
     private final ExpenseLockClient expenseLockClient;
     private final ClaimOutbox claimOutbox;
+    private final ReimbursementService reimbursementService;
+    private final AuditService auditService;
 
     @Override
     public ClaimResponseDto createClaim(ClaimRequestDto requestDto, CurrentUser actor) {
@@ -81,7 +93,11 @@ public class ClaimServiceImpl implements ClaimService {
                 expenseIds), "Recording the expense release of rolled-back claim " + claimId);
 
         applyLockedExpenses(claim, expenseLockClient.lockForClaim(claimId, actor.id(), expenseIds), expenseIds, actor);
-        return mapToResponse(claimRepository.save(claim));
+        Claim saved = claimRepository.save(claim);
+        claimOutbox.enqueueNotification(claimId, NotificationMessage.toAdmins(actor.id(), "CLAIM_SUBMITTED",
+                "New claim to review", "Claim %s (“%s”) for %s is waiting for review."
+                        .formatted(saved.getClaimNumber(), saved.getTitle(), money(saved.getClaimAmount())), "/claims"));
+        return mapToResponse(saved);
     }
 
     @Override
@@ -96,11 +112,35 @@ public class ClaimServiceImpl implements ClaimService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ClaimResponseDto> getAllClaims(CurrentUser actor, Pageable pageable) {
-        Page<Claim> claims = actor.admin()
-                ? claimRepository.findAll(pageable)
-                : claimRepository.findAllByOwnerId(actor.id(), pageable);
-        return claims.map(this::mapToResponse);
+    public Page<ClaimResponseDto> getAllClaims(CurrentUser actor, ClaimListFilter filter, Pageable pageable) {
+        Long ownerId = actor.scopeOwner(filter.ownerId());
+        Specification<Claim> spec = (root, query, cb) -> cb.conjunction();
+        if (ownerId != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("ownerId"), ownerId));
+        }
+        if (filter.tripId() != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("tripId"), filter.tripId()));
+        }
+        if (filter.statuses() != null && !filter.statuses().isEmpty()) {
+            List<String> statuses = filter.statuses().stream()
+                    .map(value -> ClaimStatus.parse(value.trim().toUpperCase(Locale.ROOT))
+                            .orElseThrow(() -> new InvalidRequestException("Unknown claim status: " + value)).name())
+                    .toList();
+            spec = spec.and((root, query, cb) -> root.get("status").in(statuses));
+        }
+        return claimRepository.findAll(spec, pageable).map(this::mapToResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ClaimSummaryDto getSummary(CurrentUser actor, Long requestedOwnerId) {
+        List<ClaimStatusTotalDto> byStatus = claimRepository.totalsByStatus(actor.scopeOwner(requestedOwnerId));
+        long total = byStatus.stream().mapToLong(ClaimStatusTotalDto::count).sum();
+        BigDecimal amount = byStatus.stream().map(ClaimStatusTotalDto::total).reduce(BigDecimal.ZERO, BigDecimal::add);
+        long awaiting = byStatus.stream()
+                .filter(row -> ClaimStatus.parse(row.status()).map(ClaimStatus::awaitingReview).orElse(false))
+                .mapToLong(ClaimStatusTotalDto::count).sum();
+        return new ClaimSummaryDto(total, amount, awaiting, byStatus);
     }
 
     @Override
@@ -142,14 +182,41 @@ public class ClaimServiceImpl implements ClaimService {
 
     @Override
     public ClaimResponseDto approveClaim(Long id, CurrentUser actor) {
-        return review(id, actor, ClaimStatus.APPROVED);
+        ClaimResponseDto approved = review(id, actor, ClaimStatus.APPROVED);
+        reimbursementService.openFor(findClaimById(id), actor.id());
+        audit(actor, "CLAIM_APPROVED", approved);
+        notifyOwner(approved, actor, "CLAIM_APPROVED", "Claim approved",
+                "Your claim %s (“%s”) for %s was approved and is now awaiting reimbursement.");
+        return approved;
     }
 
     @Override
     public ClaimResponseDto rejectClaim(Long id, CurrentUser actor) {
         ClaimResponseDto rejected = review(id, actor, ClaimStatus.REJECTED);
         claimOutbox.enqueueRelease(OutboxEventType.CLAIM_REJECTED, id, rejected.getExpenseIds());
+        audit(actor, "CLAIM_REJECTED", rejected);
+        notifyOwner(rejected, actor, "CLAIM_REJECTED", "Claim rejected",
+                "Your claim %s (“%s”) for %s was rejected. Its expenses are unlocked: you can edit them or include "
+                        + "them in a new claim.");
         return rejected;
+    }
+
+    private void audit(CurrentUser actor, String action, ClaimResponseDto claim) {
+        auditService.record(actor.id(), action, "CLAIM", claim.getId(), "Claim %s of user #%s for %s: %s"
+                .formatted(claim.getClaimNumber(), claim.getOwnerId(), money(claim.getClaimAmount()), claim.getStatus()));
+    }
+
+    /** Recorded in the same transaction as the review; delivered by the outbox. Legacy claims have no owner. */
+    private void notifyOwner(ClaimResponseDto claim, CurrentUser actor, String type, String title, String template) {
+        if (claim.getOwnerId() == null) {
+            return;
+        }
+        claimOutbox.enqueueNotification(claim.getId(), NotificationMessage.toUser(claim.getOwnerId(), actor.id(), type,
+                title, template.formatted(claim.getClaimNumber(), claim.getTitle(), money(claim.getClaimAmount())), "/claims"));
+    }
+
+    private static String money(BigDecimal amount) {
+        return NumberFormat.getCurrencyInstance(Locale.US).format(amount == null ? BigDecimal.ZERO : amount);
     }
 
     private ClaimResponseDto review(Long id, CurrentUser actor, ClaimStatus outcome) {

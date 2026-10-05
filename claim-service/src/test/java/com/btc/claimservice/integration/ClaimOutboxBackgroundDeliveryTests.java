@@ -7,6 +7,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 import com.btc.claimservice.client.ExpenseLockClient;
+import com.btc.claimservice.client.NotificationClient;
 import com.btc.claimservice.entity.Claim;
 import com.btc.claimservice.exception.DependencyUnavailableException;
 import com.btc.claimservice.outbox.OutboxEvent;
@@ -53,6 +54,9 @@ class ClaimOutboxBackgroundDeliveryTests {
 
         @MockitoBean
         ExpenseLockClient expenseLockClient;
+
+        @MockitoBean
+        NotificationClient notificationClient;
 
         @AfterEach
         void cleanUp() {

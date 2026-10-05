@@ -1,0 +1,134 @@
+.auth-shell {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(360px, 5fr) 7fr;
+  background: var(--surface);
+}
+
+.brand-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 2.5rem;
+  overflow: hidden;
+  background: var(--brand-ink);
+  color: #e6ebf3;
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-row app-brand-mark {
+  --brand-ink: #1a3358;
+}
+
+.brand-name {
+  color: #fff;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.brand-copy h1 {
+  max-width: 28rem;
+  margin: 0 0 0.75rem;
+  color: #fff;
+  font-size: clamp(1.625rem, 2.6vw, 2.25rem);
+  line-height: 1.2;
+}
+
+.brand-copy p {
+  max-width: 30rem;
+  color: #b8c3d4;
+}
+
+.brand-copy ul {
+  display: grid;
+  gap: 0.875rem;
+  margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brand-copy li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #dbe2ec;
+  font-size: 0.9375rem;
+}
+
+.brand-copy mat-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  border-radius: var(--radius-sm);
+  background: rgb(255 255 255 / 0.08);
+  color: var(--brand-accent);
+}
+
+.route-art {
+  width: 100%;
+  max-width: 420px;
+  opacity: 0.7;
+}
+
+.route-art path {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.35);
+  stroke-width: 2;
+  stroke-dasharray: 4 7;
+}
+
+.route-art .stop {
+  fill: rgb(255 255 255 / 0.55);
+}
+
+.route-art .end {
+  fill: var(--brand-accent);
+}
+
+.form-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 2.5rem 1.5rem;
+}
+
+.form-area {
+  width: min(100%, 400px);
+}
+
+.legal {
+  color: var(--text-subtle);
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 960px) {
+  .auth-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .brand-panel {
+    padding: 1.25rem 1.5rem;
+  }
+
+  .brand-copy,
+  .route-art {
+    display: none;
+  }
+
+  .form-panel {
+    justify-content: flex-start;
+    padding-top: 2.5rem;
+  }
+}

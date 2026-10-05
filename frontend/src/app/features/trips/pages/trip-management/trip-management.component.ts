@@ -63,6 +63,12 @@ export class TripManagementComponent {
     { key: 'status', header: 'Status', type: 'chip' },
   ];
   readonly tableActions: DataTableAction<Trip>[] = [
+    {
+      id: 'view',
+      label: 'View',
+      icon: 'visibility',
+      handler: (trip) => this.router.navigate(['/trips/view', trip.id]),
+    },
     // Only owners may change a trip (administrators can view all). The backend enforces this too.
     {
       id: 'edit',

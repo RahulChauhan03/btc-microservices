@@ -1,0 +1,102 @@
+<div class="page-grid">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a class="text-link" routerLink="/employees">Employee directory</a>
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">{{ profile()?.user?.name ?? 'Profile' }}</span>
+  </nav>
+
+  @switch (state()) {
+    @case ('loading') {
+      <app-btc-loader message="Loading profile…" />
+    }
+    @case ('not-found') {
+      <div class="section-card empty-state" role="alert">
+        <mat-icon aria-hidden="true">person_off</mat-icon>
+        <strong>Employee not found</strong>
+        <a mat-stroked-button routerLink="/employees">Back to the directory</a>
+      </div>
+    }
+    @case ('error') {
+      <div class="section-card empty-state" role="alert">
+        <mat-icon aria-hidden="true">cloud_off</mat-icon>
+        <strong>We couldn’t load this profile</strong>
+        <button mat-flat-button type="button" (click)="load()">Try again</button>
+      </div>
+    }
+    @case ('ready') {
+      @if (profile(); as p) {
+        <header class="page-toolbar">
+          <div class="identity">
+            <span class="avatar" aria-hidden="true">{{ p.user.name.charAt(0).toUpperCase() }}</span>
+            <div>
+              <h1>{{ p.user.name }}</h1>
+              <p class="muted">
+                {{ p.user.email }} · {{ p.user.phone }} ·
+                <span [class]="'status-badge status-' + p.user.role.toLowerCase()">{{ p.user.role === 'ADMIN' ? 'Administrator' : 'Employee' }}</span>
+              </p>
+              <p class="muted">Joined {{ p.user.createdAt | date: 'mediumDate' }}</p>
+            </div>
+          </div>
+          <a mat-stroked-button routerLink="/users"><mat-icon>manage_accounts</mat-icon>Manage account</a>
+        </header>
+
+        <section class="metrics-grid" aria-label="Activity">
+          <app-stat-card label="Trips" [value]="p.trips.total" icon="flight_takeoff" [hint]="p.trips.upcoming + ' upcoming'" />
+          <app-stat-card label="Spending" [value]="p.expenses.total" icon="payments" format="currency" tone="accent" hint="Last 12 months" />
+          <app-stat-card label="Claims" [value]="p.claims.total" icon="fact_check" [hint]="p.claims.awaitingReview + ' awaiting review'" />
+        </section>
+
+        <section class="profile-grid">
+          <article class="section-card">
+            <h2>Recent trips</h2>
+            @if (p.recentTrips.length) {
+              <ul class="rows">
+                @for (trip of p.recentTrips; track trip.id) {
+                  <li>
+                    <a class="text-link" [routerLink]="['/trips/view', trip.id]">{{ trip.destination }}</a>
+                    <small>{{ trip.tripCode }} · {{ trip.startDate | date: 'mediumDate' }}</small>
+                    <span [class]="statusClass(trip.status)">{{ label(trip.status) }}</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="muted">No trips.</p>
+            }
+          </article>
+          <article class="section-card">
+            <h2>Recent expenses</h2>
+            @if (p.recentExpenses.length) {
+              <ul class="rows">
+                @for (expense of p.recentExpenses; track expense.id) {
+                  <li>
+                    <span>{{ expense.title }}</span>
+                    <small>{{ label(expense.category) }} · {{ expense.expenseDate | date: 'mediumDate' }}</small>
+                    <span class="amount">{{ expense.amount | currency: 'USD' }}</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="muted">No expenses.</p>
+            }
+          </article>
+          <article class="section-card">
+            <h2>Recent claims</h2>
+            @if (p.recentClaims.length) {
+              <ul class="rows">
+                @for (claim of p.recentClaims; track claim.id) {
+                  <li>
+                    <span>{{ claim.title }}</span>
+                    <small>{{ claim.claimNumber }} · {{ claim.claimAmount | currency: 'USD' }}</small>
+                    <span [class]="statusClass(claim.status)">{{ label(claim.status) }}</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="muted">No claims.</p>
+            }
+          </article>
+        </section>
+      }
+    }
+  }
+</div>

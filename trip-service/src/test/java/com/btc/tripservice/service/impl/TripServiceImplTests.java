@@ -3,15 +3,18 @@ package com.btc.tripservice.service.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.btc.tripservice.client.TripExpensesClient;
+import com.btc.tripservice.dto.TripListFilter;
 import com.btc.tripservice.dto.TripRequestDto;
 import com.btc.tripservice.entity.Trip;
 import com.btc.tripservice.exception.DependencyUnavailableException;
+import com.btc.tripservice.exception.InvalidRequestException;
 import com.btc.tripservice.exception.TripInUseException;
 import com.btc.tripservice.exception.TripNotFoundException;
 import com.btc.tripservice.repository.TripRepository;
@@ -24,9 +27,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 
 class TripServiceImplTests {
+
+    private static final TripListFilter NO_FILTER = new TripListFilter(null, null, false);
 
     private static final CurrentUser OWNER = new CurrentUser(10L, false);
     private static final CurrentUser OTHER = new CurrentUser(20L, false);
@@ -50,11 +56,15 @@ class TripServiceImplTests {
 
     @Test
     void listsAreScopedToOwnerExceptForAdmin() {
-        when(tripRepository.findAllByOwnerId(OWNER.id(), Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(trip(5L, OWNER.id()))));
-        when(tripRepository.findAll(Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(trip(5L, OWNER.id()), trip(7L, OTHER.id()))));
+        when(tripRepository.findAll(any(Specification.class), eq(Pageable.unpaged())))
+                .thenReturn(new PageImpl<>(List.of(trip(5L, OWNER.id()))));
 
-        assertThat(tripService.getAllTrips(OWNER, Pageable.unpaged())).hasSize(1);
-        assertThat(tripService.getAllTrips(ADMIN, Pageable.unpaged())).hasSize(2);
+        assertThat(tripService.getAllTrips(OWNER, NO_FILTER, Pageable.unpaged())).hasSize(1);
+        assertThat(tripService.getAllTrips(ADMIN, new TripListFilter(OTHER.id(), null, false), Pageable.unpaged())).hasSize(1);
+        assertThatThrownBy(() -> tripService.getAllTrips(OWNER, new TripListFilter(OTHER.id(), null, false), Pageable.unpaged()))
+                .as("employee asking for another owner's trips").isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> tripService.getAllTrips(ADMIN, new TripListFilter(null, "BOGUS", false), Pageable.unpaged()))
+                .isInstanceOf(InvalidRequestException.class);
     }
 
     @Test
@@ -63,7 +73,7 @@ class TripServiceImplTests {
         assertThatThrownBy(() -> tripService.updateTrip(5L, request(), OTHER)).isInstanceOf(TripNotFoundException.class);
         assertThatThrownBy(() -> tripService.deleteTrip(5L, OTHER)).isInstanceOf(TripNotFoundException.class);
         verify(tripRepository, never()).save(any());
-        verify(tripRepository, never()).delete(any());
+        verify(tripRepository, never()).delete(any(Trip.class));
     }
 
     @Test
@@ -92,7 +102,7 @@ class TripServiceImplTests {
         when(tripExpensesClient.hasExpenses(5L)).thenReturn(true);
 
         assertThatThrownBy(() -> tripService.deleteTrip(5L, OWNER)).isInstanceOf(TripInUseException.class);
-        verify(tripRepository, never()).delete(any());
+        verify(tripRepository, never()).delete(any(Trip.class));
     }
 
     @Test
@@ -100,7 +110,7 @@ class TripServiceImplTests {
         when(tripExpensesClient.hasExpenses(5L)).thenThrow(new DependencyUnavailableException("down", null));
 
         assertThatThrownBy(() -> tripService.deleteTrip(5L, OWNER)).isInstanceOf(DependencyUnavailableException.class);
-        verify(tripRepository, never()).delete(any());
+        verify(tripRepository, never()).delete(any(Trip.class));
     }
 
     @Test

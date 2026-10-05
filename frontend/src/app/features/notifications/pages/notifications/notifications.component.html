@@ -1,0 +1,67 @@
+<div class="page-grid">
+  <header class="page-toolbar">
+    <div>
+      <span class="page-kicker">Inbox</span>
+      <h1>Notifications</h1>
+    </div>
+    <div class="toolbar-actions">
+      <mat-button-toggle-group [value]="unreadOnly()" (change)="setFilter($event.value)" aria-label="Filter notifications">
+        <mat-button-toggle [value]="false">All</mat-button-toggle>
+        <mat-button-toggle [value]="true">Unread</mat-button-toggle>
+      </mat-button-toggle-group>
+      <button mat-stroked-button type="button" (click)="markAllRead()" [disabled]="unread() === 0">
+        <mat-icon>done_all</mat-icon>Mark all as read
+      </button>
+    </div>
+  </header>
+
+  <section class="section-card">
+    @switch (state()) {
+      @case ('loading') {
+        <app-btc-loader message="Loading notifications…" />
+      }
+      @case ('error') {
+        <div class="empty-state" role="alert">
+          <mat-icon aria-hidden="true">cloud_off</mat-icon>
+          <strong>We couldn’t load your notifications</strong>
+          <span>{{ loadError() }}</span>
+          <button mat-flat-button type="button" (click)="load()">Try again</button>
+        </div>
+      }
+      @default {
+        @if (items().length) {
+          <ul class="notification-list">
+            @for (item of items(); track item.id) {
+              <li [class.unread]="!item.read">
+                <button type="button" class="notification" (click)="open(item)">
+                  <span class="icon" aria-hidden="true"><mat-icon>{{ icon(item.type) }}</mat-icon></span>
+                  <span class="copy">
+                    <strong>{{ item.title }}</strong>
+                    <span>{{ item.message }}</span>
+                    <time [attr.datetime]="item.createdAt">{{ item.createdAt | date: 'medium' }}</time>
+                  </span>
+                  @if (!item.read) {
+                    <span class="dot"><span class="visually-hidden">Unread</span></span>
+                  }
+                </button>
+              </li>
+            }
+          </ul>
+          @if (items().length < total()) {
+            <div class="more">
+              <button mat-stroked-button type="button" (click)="loadMore()" [disabled]="loadingMore()">
+                {{ loadingMore() ? 'Loading…' : 'Load more' }}
+              </button>
+            </div>
+          }
+        } @else {
+          <div class="empty-state">
+            <mat-icon aria-hidden="true">notifications_none</mat-icon>
+            <strong>{{ unreadOnly() ? 'No unread notifications' : 'No notifications yet' }}</strong>
+            <span>Updates about your claims and reimbursements will appear here.</span>
+          </div>
+        }
+      }
+    }
+  </section>
+</div>

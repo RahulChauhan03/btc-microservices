@@ -12,14 +12,8 @@
     </div>
 
     <section class="metrics-grid">
-      <mat-card class="section-card metric-card">
-        <span>Total Expenses</span>
-        <strong>{{ totalExpenses() | currency: 'USD' }}</strong>
-      </mat-card>
-      <mat-card class="section-card metric-card">
-        <span>Expense Records</span>
-        <strong>{{ expenses().length }}</strong>
-      </mat-card>
+      <app-stat-card label="Total expenses" [value]="totalExpenses()" icon="payments" format="currency" tone="accent" />
+      <app-stat-card label="Expense records" [value]="expenses().length" icon="receipt_long" />
     </section>
 
     <mat-card class="section-card scroll-card table-card">
@@ -30,6 +24,8 @@
         [columns]="tableColumns"
         [actions]="tableActions"
         [showTitle]="false"
+        emptyTitle="No expenses yet"
+        emptyMessage="Add an expense to start building a claim."
       />
     </mat-card>
   } @else {

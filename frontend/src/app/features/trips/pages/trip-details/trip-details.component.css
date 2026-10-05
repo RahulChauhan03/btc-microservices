@@ -1,0 +1,114 @@
+.breadcrumb {
+  display: flex;
+  gap: 0.5rem;
+  color: var(--text-subtle);
+  font-size: 0.875rem;
+}
+
+.subtitle,
+.muted,
+.hint {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.hint.over,
+dd.over {
+  color: var(--danger);
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.danger-outline:not(:disabled) {
+  color: var(--danger) !important;
+}
+
+.details-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.facts dt {
+  color: var(--text-subtle);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.budget {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.budget span {
+  display: block;
+  height: 100%;
+  background: var(--brand-accent);
+}
+
+.budget span.over {
+  background: var(--danger);
+}
+
+.item-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.item-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-copy strong,
+.item-copy small {
+  display: block;
+}
+
+.item-copy small {
+  color: var(--text-subtle);
+}
+
+.amount,
+.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

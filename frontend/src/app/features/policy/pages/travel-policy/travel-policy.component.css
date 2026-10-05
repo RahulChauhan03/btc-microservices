@@ -1,0 +1,62 @@
+.muted {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+h2 {
+  margin: 0.375rem 0 0.25rem;
+  font-size: 1.0625rem;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.limits {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.limits legend {
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.form-error {
+  color: var(--danger);
+  font-size: 0.875rem;
+}
+
+.limits-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 0;
+}
+
+.limits-list dt {
+  color: var(--text-subtle);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.limits-list dd {
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip {
+  display: inline-block;
+  margin: 0 0.375rem 0.25rem 0;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  font-size: 0.75rem;
+}

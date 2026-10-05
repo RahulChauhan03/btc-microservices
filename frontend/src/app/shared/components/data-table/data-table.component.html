@@ -5,8 +5,9 @@
 
   <div class="table-controls">
     <mat-form-field appearance="outline" class="table-search">
+      <mat-icon matPrefix class="search-icon" aria-hidden="true">search</mat-icon>
       <mat-label>{{ searchPlaceholder }}</mat-label>
-      <input matInput [value]="searchQuery" (input)="searchQuery = $any($event.target).value" />
+      <input matInput type="search" [value]="searchQuery" (input)="searchQuery = $any($event.target).value" />
     </mat-form-field>
 
     @for (filter of filters; track filter.key) {
@@ -36,7 +37,7 @@
                   type="button"
                   class="row-action"
                   [class.danger-action]="action.id === 'delete'"
-                  [attr.aria-label]="action.label"
+                  [attr.aria-label]="action.label + ' ' + rowLabel(row)"
                   (click)="runAction(action, row)"
                 >
                   <mat-icon>{{ action.icon }}</mat-icon>
@@ -90,5 +91,19 @@
 
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
     <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+    <tr class="mat-mdc-row" *matNoDataRow>
+      <td class="mat-mdc-cell no-data-cell" [attr.colspan]="displayedColumns.length">
+        <div class="empty-state">
+          <mat-icon aria-hidden="true">{{ searchQuery.trim() ? 'search_off' : 'inbox' }}</mat-icon>
+          @if (searchQuery.trim()) {
+            <strong>No matches for “{{ searchQuery.trim() }}”</strong>
+            <span>Try a different search term.</span>
+          } @else {
+            <strong>{{ emptyTitle }}</strong>
+            <span>{{ emptyMessage }}</span>
+          }
+        </div>
+      </td>
+    </tr>
   </table>
 </div>

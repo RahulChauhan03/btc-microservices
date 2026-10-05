@@ -1,0 +1,35 @@
+<div class="auth-shell">
+  <aside class="brand-panel">
+    <div class="brand-row">
+      <app-brand-mark [size]="36" />
+      <span class="brand-name">BTC Flow</span>
+    </div>
+
+    <div class="brand-copy">
+      <h1>Business travel and expenses, without the paperwork.</h1>
+      <p>One workspace for trips, expenses and reimbursement claims, from booking to approval.</p>
+      <ul>
+        @for (item of highlights; track item.icon) {
+          <li>
+            <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+            <span>{{ item.text }}</span>
+          </li>
+        }
+      </ul>
+    </div>
+
+    <svg class="route-art" viewBox="0 0 400 140" aria-hidden="true" focusable="false">
+      <path d="M10 120 C 120 120, 120 30, 220 40 S 330 110, 390 20" />
+      <circle cx="10" cy="120" r="5" class="stop" />
+      <circle cx="220" cy="40" r="4" class="stop" />
+      <circle cx="390" cy="20" r="6" class="end" />
+    </svg>
+  </aside>
+
+  <main class="form-panel">
+    <div class="form-area">
+      <ng-content />
+    </div>
+    <p class="legal">© BTC Flow · Secure business travel workspace</p>
+  </main>
+</div>

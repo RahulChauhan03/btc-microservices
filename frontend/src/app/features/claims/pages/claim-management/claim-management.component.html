@@ -12,14 +12,8 @@
     </div>
 
     <section class="metrics-grid">
-      <mat-card class="section-card summary-card">
-        <span>Pending Claims</span>
-        <strong>{{ pendingClaims() }}</strong>
-      </mat-card>
-      <mat-card class="section-card summary-card">
-        <span>Total Claims</span>
-        <strong>{{ claims().length }}</strong>
-      </mat-card>
+      <app-stat-card label="Awaiting review" [value]="pendingClaims()" icon="pending_actions" hint="Submitted, not yet reviewed" />
+      <app-stat-card label="Total claims" [value]="claims().length" icon="fact_check" />
     </section>
 
     <mat-card class="section-card scroll-card table-card">
@@ -30,6 +24,8 @@
         [columns]="tableColumns"
         [actions]="tableActions"
         [showTitle]="false"
+        emptyTitle="No claims yet"
+        emptyMessage="Group your expenses into a claim to request reimbursement."
       />
     </mat-card>
   } @else {

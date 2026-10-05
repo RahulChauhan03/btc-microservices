@@ -1,7 +1,9 @@
 package com.btc.tripservice.controller;
 
+import com.btc.tripservice.dto.TripListFilter;
 import com.btc.tripservice.dto.TripRequestDto;
 import com.btc.tripservice.dto.TripResponseDto;
+import com.btc.tripservice.dto.TripSummaryDto;
 import com.btc.tripservice.security.CurrentUser;
 import com.btc.tripservice.service.TripService;
 import com.btc.tripservice.web.PageRequests;
@@ -45,14 +47,26 @@ public class TripController {
         return ResponseEntity.ok(tripService.getTripById(id, CurrentUser.from(jwt)));
     }
 
+    /** Counts by status in the caller's scope (administrators: everyone, or one owner via ownerId). */
+    @GetMapping("/summary")
+    public ResponseEntity<TripSummaryDto> getSummary(@RequestParam(required = false) Long ownerId,
+                                                     @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(tripService.getSummary(CurrentUser.from(jwt), ownerId));
+    }
+
     @GetMapping
     public ResponseEntity<List<TripResponseDto>> getAllTrips(
+            @RequestParam(required = false) Long ownerId,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "false") boolean upcoming,
+            @RequestParam(required = false) List<Long> ids,
             @RequestParam(defaultValue = PageRequests.DEFAULT_PAGE) int page,
             @RequestParam(defaultValue = PageRequests.DEFAULT_SIZE) int size,
             @RequestParam(defaultValue = PageRequests.DEFAULT_SORT) String sort,
             @AuthenticationPrincipal Jwt jwt) {
         return PageRequests.toResponse(
-                tripService.getAllTrips(CurrentUser.from(jwt), PageRequests.of(page, size, sort, SORTABLE)));
+                tripService.getAllTrips(CurrentUser.from(jwt), new TripListFilter(ownerId, status, upcoming, ids),
+                        PageRequests.of(page, size, sort, SORTABLE)));
     }
 
     @PutMapping("/{id}")

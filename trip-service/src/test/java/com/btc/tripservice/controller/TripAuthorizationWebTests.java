@@ -60,7 +60,7 @@ class TripAuthorizationWebTests {
                 .andExpect(status().isNotFound());
         mockMvc.perform(delete("/trips/5").header(HttpHeaders.AUTHORIZATION, TestJwt.bearer(1, "ADMIN")))
                 .andExpect(status().isForbidden());
-        verify(tripRepository, never()).delete(any());
+        verify(tripRepository, never()).delete(any(Trip.class));
     }
 
     @Test
@@ -100,7 +100,7 @@ class TripAuthorizationWebTests {
         mockMvc.perform(delete("/trips/5").header(HttpHeaders.AUTHORIZATION, TestJwt.bearer(10, "EMPLOYEE")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409));
-        verify(tripRepository, never()).delete(any());
+        verify(tripRepository, never()).delete(any(Trip.class));
     }
 
     private static String body(LocalDate start, LocalDate end, String budget) {

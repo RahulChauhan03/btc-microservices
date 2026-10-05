@@ -64,6 +64,17 @@ class GatewaySecurityTests {
     }
 
     @Test
+    void passwordRecoveryIsPublicButOnlyForPost() {
+        // Reaches routing (503: no user-service instance in tests) instead of being stopped with 401.
+        for (String path : new String[] {"/auth/forgot-password", "/auth/reset-password"}) {
+            webTestClient.post().uri(path).exchange().expectStatus().isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+            webTestClient.get().uri(path).exchange().expectStatus().isUnauthorized();
+        }
+        webTestClient.post().uri("/auth/anything-else").exchange().expectStatus().isUnauthorized();
+        webTestClient.get().uri("/users").exchange().expectStatus().isUnauthorized();
+    }
+
+    @Test
     void unsignedAlgNoneTokenReturns401() {
         String header = b64("{\"alg\":\"none\",\"typ\":\"JWT\"}");
         String payload = b64("{\"sub\":\"1\",\"role\":\"ADMIN\",\"iss\":\"" + ISSUER + "\",\"exp\":"
@@ -151,6 +162,8 @@ class GatewaySecurityTests {
         webTestClient.put().uri("/expenses/internal/claims/1/locks").header(HttpHeaders.AUTHORIZATION, token)
                 .exchange().expectStatus().isForbidden();
         webTestClient.delete().uri("/expenses/internal/claims/1/locks").exchange().expectStatus().isUnauthorized();
+        webTestClient.post().uri("/notifications/internal/events").header(HttpHeaders.AUTHORIZATION, token)
+                .exchange().expectStatus().isForbidden();
     }
 
     @Test

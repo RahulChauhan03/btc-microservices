@@ -1,81 +1,74 @@
-<section class="login-page">
-  <div class="login-visual" aria-hidden="true">
-    <span></span>
-    <span></span>
-    <span></span>
-  </div>
+<app-auth-layout>
+  <header class="auth-heading">
+    <h2>Sign in</h2>
+    <p>Welcome back. Use your work email to access your workspace.</p>
+  </header>
 
-  <div class="login-copy">
-    <span class="eyebrow">Business Travel Operations</span>
-    <h1>BTC Flow</h1>
-    <p>
-      Manage trips, expenses, and claims from one secure workspace built for fast approvals and
-      cleaner travel ops.
-    </p>
-
-    <div class="value-points">
-      <div>
-        <mat-icon>shield</mat-icon>
-        <span>JWT-secured access</span>
-      </div>
-      <div>
-        <mat-icon>hub</mat-icon> 
-        <span>Gateway-based integrations</span>
-      </div>
-      <div>
-        <mat-icon>task_alt</mat-icon>
-        <span>Trips to reimbursement in one flow</span>
-      </div>
+  @if (passwordReset && !errorMessage()) {
+    <div class="auth-alert success" role="status">
+      <mat-icon aria-hidden="true">check_circle</mat-icon>
+      <span>Your password has been reset. Sign in with your new password.</span>
     </div>
-  </div>
+  }
 
-  <mat-card class="login-card section-card">
-    <div class="card-top">
-      <div>
-        <span class="card-kicker">Welcome back</span>
-        <h2>Sign In</h2>
-        <p class="card-copy">Use your employee credentials to access the claims workspace.</p>
-      </div>
-      <div class="status-badge">
-        <span class="status-dot"></span>
-        Secure
-      </div>
+  @if (errorMessage()) {
+    <div class="auth-alert error" role="alert">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <span>{{ errorMessage() }}</span>
     </div>
+  }
 
-    <form [formGroup]="loginForm" (ngSubmit)="submit()" class="page-grid">
-      <mat-form-field appearance="outline">
-        <mat-label>Email</mat-label>
-        <input matInput type="email" formControlName="email" />
-        @if (loginForm.controls.email.touched && loginForm.controls.email.invalid) {
-          <mat-error>Enter a valid business email address.</mat-error>
-        }
-      </mat-form-field>
+  <form [formGroup]="loginForm" (ngSubmit)="submit()" class="auth-form" novalidate>
+    <mat-form-field appearance="outline">
+      <mat-label>Work email</mat-label>
+      <input matInput type="email" formControlName="email" autocomplete="username" required />
+      @if (loginForm.controls.email.hasError('required')) {
+        <mat-error>Enter your email address.</mat-error>
+      } @else if (loginForm.controls.email.hasError('email')) {
+        <mat-error>Enter a valid email address, e.g. name@company.com.</mat-error>
+      }
+    </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Password</mat-label>
-        <input
-          matInput
-          [type]="hidePassword() ? 'password' : 'text'"
-          formControlName="password"
-        />
-        <button
-          mat-icon-button
-          matSuffix
-          type="button"
-          (click)="hidePassword.set(!hidePassword())"
-        >
-          <mat-icon>{{ hidePassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
-        </button>
-        @if (loginForm.controls.password.touched && loginForm.controls.password.invalid) {
-          <mat-error>Password must be at least 8 characters.</mat-error>
-        }
-      </mat-form-field>
-
-      <mat-checkbox formControlName="rememberMe">Keep me signed in on this device</mat-checkbox>
-
-      <button mat-flat-button type="submit" [disabled]="submitting()">
-        {{ submitting() ? 'Signing in...' : 'Login' }}
+    <mat-form-field appearance="outline">
+      <mat-label>Password</mat-label>
+      <input
+        matInput
+        [type]="hidePassword() ? 'password' : 'text'"
+        formControlName="password"
+        autocomplete="current-password"
+        required
+      />
+      <button
+        mat-icon-button
+        matSuffix
+        type="button"
+        (click)="hidePassword.set(!hidePassword())"
+        [attr.aria-label]="hidePassword() ? 'Show password' : 'Hide password'"
+        [attr.aria-pressed]="!hidePassword()"
+      >
+        <mat-icon>{{ hidePassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
       </button>
-    </form>
-  </mat-card>
-</section>
+      @if (loginForm.controls.password.hasError('required')) {
+        <mat-error>Enter your password.</mat-error>
+      } @else if (loginForm.controls.password.hasError('minlength')) {
+        <mat-error>Password must be at least 8 characters.</mat-error>
+      }
+    </mat-form-field>
+
+    <div class="field-row">
+      <mat-checkbox formControlName="rememberMe">Keep me signed in</mat-checkbox>
+      <a class="text-link" routerLink="/forgot-password">Forgot password?</a>
+    </div>
+
+    <button mat-flat-button class="auth-submit" type="submit" [disabled]="submitting()">
+      @if (submitting()) {
+        <span class="button-spinner" aria-hidden="true"></span>
+        Signing in…
+      } @else {
+        Sign in
+      }
+    </button>
+  </form>
+
+  <p class="auth-footer">Need an account? Ask your BTC Flow administrator.</p>
+</app-auth-layout>

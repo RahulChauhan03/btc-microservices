@@ -1,0 +1,11 @@
+@if (mode() === 'overlay') {
+  <span class="progress-line" aria-hidden="true"></span>
+}
+<div class="loader-body">
+  <div class="loader-visual" aria-hidden="true">
+    <span class="orbit"></span>
+    <span class="orbiter"><span class="plane"></span></span>
+    <app-brand-mark [size]="30" />
+  </div>
+  <span class="loader-text">{{ message() }}</span>
+</div>

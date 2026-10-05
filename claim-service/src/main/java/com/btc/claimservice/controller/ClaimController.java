@@ -1,7 +1,9 @@
 package com.btc.claimservice.controller;
 
+import com.btc.claimservice.dto.ClaimListFilter;
 import com.btc.claimservice.dto.ClaimRequestDto;
 import com.btc.claimservice.dto.ClaimResponseDto;
+import com.btc.claimservice.dto.ClaimSummaryDto;
 import com.btc.claimservice.security.CurrentUser;
 import com.btc.claimservice.service.ClaimService;
 import com.btc.claimservice.web.PageRequests;
@@ -45,14 +47,25 @@ public class ClaimController {
         return ResponseEntity.ok(claimService.getClaimById(id, CurrentUser.from(jwt)));
     }
 
+    /** Counts and amounts by status for the caller's scope (administrators: everyone, or one owner). */
+    @GetMapping("/summary")
+    public ResponseEntity<ClaimSummaryDto> getSummary(@RequestParam(required = false) Long ownerId,
+                                                      @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(claimService.getSummary(CurrentUser.from(jwt), ownerId));
+    }
+
     @GetMapping
     public ResponseEntity<List<ClaimResponseDto>> getAllClaims(
+            @RequestParam(required = false) Long ownerId,
+            @RequestParam(required = false) Long tripId,
+            @RequestParam(required = false) List<String> status,
             @RequestParam(defaultValue = PageRequests.DEFAULT_PAGE) int page,
             @RequestParam(defaultValue = PageRequests.DEFAULT_SIZE) int size,
             @RequestParam(defaultValue = PageRequests.DEFAULT_SORT) String sort,
             @AuthenticationPrincipal Jwt jwt) {
         return PageRequests.toResponse(
-                claimService.getAllClaims(CurrentUser.from(jwt), PageRequests.of(page, size, sort, SORTABLE)));
+                claimService.getAllClaims(CurrentUser.from(jwt), new ClaimListFilter(ownerId, tripId, status),
+                        PageRequests.of(page, size, sort, SORTABLE)));
     }
 
     @PutMapping("/{id}")

@@ -1,5 +1,8 @@
 package com.btc.claimservice.outbox;
 
+import com.btc.claimservice.client.NotificationMessage;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
 import java.time.Clock;
 import java.time.Duration;
@@ -39,6 +42,7 @@ public class ClaimOutbox {
     private final OutboxProperties properties;
     private final Clock clock;
     private final TransactionTemplate newTransaction;
+    private final ObjectMapper objectMapper;
     private final ThreadPoolExecutor dispatcher = new ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS,
             new ArrayBlockingQueue<>(200), runnable -> {
                 Thread thread = new Thread(runnable, "claim-outbox-dispatch");
@@ -47,7 +51,8 @@ public class ClaimOutbox {
             }, new ThreadPoolExecutor.DiscardPolicy());
 
     public ClaimOutbox(OutboxEventRepository repository, OutboxProcessor processor, OutboxProperties properties,
-                       Clock clock, PlatformTransactionManager transactionManager) {
+                       Clock clock, PlatformTransactionManager transactionManager, ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
         this.repository = repository;
         this.processor = processor;
         this.properties = properties;
@@ -60,6 +65,24 @@ public class ClaimOutbox {
     @Transactional(propagation = Propagation.MANDATORY)
     public String enqueueRelease(OutboxEventType type, Long claimId, Collection<Long> expenseIds) {
         return save(type, claimId, expenseIds, OutboxConfig.now(clock));
+    }
+
+    /** Adds a notification for notification-service to the current (claim) transaction; fails if there is none. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public String enqueueNotification(Long claimId, NotificationMessage message) {
+        LocalDateTime now = OutboxConfig.now(clock);
+        String payload;
+        try {
+            payload = objectMapper.writeValueAsString(message);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Notification could not be serialised", exception);
+        }
+        OutboxEvent event = OutboxEvent.notification(UUID.randomUUID().toString(), claimId, payload, now);
+        Long id = repository.save(event).getId();
+        log.info("Claim outbox event {} recorded: {} {} of claim {}", event.getEventId(), OutboxEventType.NOTIFICATION,
+                message.type(), claimId);
+        dispatchAfterCommit(id);
+        return event.getEventId();
     }
 
     /**
@@ -83,15 +106,22 @@ public class ClaimOutbox {
         event.scheduleFirstAttempt(firstAttemptAt);
         Long id = repository.save(event).getId();
         log.info("Claim outbox event {} recorded: {} of claim {}", event.getEventId(), type, claimId);
-        if (properties.dispatchAfterCommit() && !firstAttemptAt.isAfter(now)) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    dispatcher.execute(() -> deliverQuietly(id));
-                }
-            });
+        if (!firstAttemptAt.isAfter(now)) {
+            dispatchAfterCommit(id);
         }
         return event.getEventId();
+    }
+
+    private void dispatchAfterCommit(Long id) {
+        if (!properties.dispatchAfterCommit()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                dispatcher.execute(() -> deliverQuietly(id));
+            }
+        });
     }
 
     private void deliverQuietly(Long id) {

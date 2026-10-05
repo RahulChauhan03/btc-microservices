@@ -83,6 +83,10 @@ public class OutboxEvent {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    /** NOTIFICATION events only: the message for notification-service, as JSON. */
+    @Column(length = 2000)
+    private String payload;
+
     static OutboxEvent pending(String eventId, OutboxEventType type, Long claimId, Collection<Long> expenseIds,
                                LocalDateTime now) {
         OutboxEvent event = new OutboxEvent();
@@ -95,6 +99,12 @@ public class OutboxEvent {
         event.nextAttemptAt = now;
         event.createdAt = now;
         event.updatedAt = now;
+        return event;
+    }
+
+    static OutboxEvent notification(String eventId, Long claimId, String payload, LocalDateTime now) {
+        OutboxEvent event = pending(eventId, OutboxEventType.NOTIFICATION, claimId, List.of(), now);
+        event.payload = payload;
         return event;
     }
 

@@ -1,0 +1,138 @@
+<div class="page-grid trip-details">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a class="text-link" routerLink="/trips">Trips</a>
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">{{ details()?.trip?.tripCode ?? 'Trip' }}</span>
+  </nav>
+
+  @switch (state()) {
+    @case ('loading') {
+      <app-btc-loader message="Loading trip…" />
+    }
+    @case ('not-found') {
+      <div class="section-card empty-state" role="alert">
+        <mat-icon aria-hidden="true">travel_explore</mat-icon>
+        <strong>Trip not found</strong>
+        <span>It may have been deleted, or it belongs to someone else.</span>
+        <a mat-stroked-button routerLink="/trips">Back to trips</a>
+      </div>
+    }
+    @case ('error') {
+      <div class="section-card empty-state" role="alert">
+        <mat-icon aria-hidden="true">cloud_off</mat-icon>
+        <strong>We couldn’t load this trip</strong>
+        <span>Please try again in a moment.</span>
+        <button mat-flat-button type="button" (click)="load()">Try again</button>
+      </div>
+    }
+    @case ('ready') {
+      @if (details(); as d) {
+        <header class="page-toolbar">
+          <div>
+            <span class="page-kicker">{{ d.trip.tripCode }}</span>
+            <h1>{{ d.trip.destination }}</h1>
+            <p class="subtitle">
+              {{ d.trip.startDate | date: 'mediumDate' }} – {{ d.trip.endDate | date: 'mediumDate' }}
+              · <span [class]="statusClass(d.trip.status)">{{ label(d.trip.status) }}</span>
+            </p>
+          </div>
+          @if (isOwner()) {
+            <div class="header-actions">
+              <a mat-stroked-button [routerLink]="['/trips/edit', d.trip.id]"><mat-icon>edit</mat-icon>Edit</a>
+              <button
+                mat-stroked-button
+                type="button"
+                class="danger-outline"
+                (click)="deleteTrip()"
+                [disabled]="d.expenseTotal > 0 || deleting()"
+                [attr.aria-describedby]="d.expenseTotal > 0 ? 'delete-hint' : null"
+              >
+                <mat-icon>delete_outline</mat-icon>Delete
+              </button>
+            </div>
+          }
+        </header>
+        @if (isOwner() && d.expenseTotal > 0) {
+          <p id="delete-hint" class="hint">A trip with expenses can’t be deleted. Remove or move its expenses first.</p>
+        }
+
+        <section class="details-grid">
+          <article class="section-card">
+            <h2>Overview</h2>
+            <dl class="facts">
+              <div><dt>Owner</dt><dd>{{ d.ownerName || '—' }}</dd></div>
+              <div><dt>Budget</dt><dd>{{ d.trip.budget | currency: 'USD' }}</dd></div>
+              <div><dt>Spent</dt><dd [class.over]="overBudget()">{{ d.spending.total | currency: 'USD' }}</dd></div>
+              <div><dt>Expenses</dt><dd>{{ d.spending.count }}</dd></div>
+            </dl>
+            <div class="budget" [attr.aria-label]="'Spent ' + spentPercent().toFixed(0) + ' percent of budget'" role="img">
+              <span [style.width.%]="spentPercent()" [class.over]="overBudget()"></span>
+            </div>
+            @if (overBudget()) {
+              <p class="hint over">Spending is over this trip’s budget.</p>
+            }
+          </article>
+
+          <article class="section-card">
+            <div class="card-head">
+              <h2>Claims</h2>
+              @if (isOwner()) {
+                <a mat-button routerLink="/claims/new">New claim</a>
+              }
+            </div>
+            @if (d.claims.length) {
+              <ul class="item-list">
+                @for (claim of d.claims; track claim.id) {
+                  <li>
+                    <span class="item-copy">
+                      <strong>{{ claim.title }}</strong>
+                      <small>{{ claim.claimNumber }} · {{ claim.submittedAt | date: 'mediumDate' }}</small>
+                    </span>
+                    <span class="amount">{{ claim.claimAmount | currency: 'USD' }}</span>
+                    <span [class]="statusClass(claim.status)">{{ label(claim.status) }}</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="muted">No claims for this trip yet.</p>
+            }
+          </article>
+        </section>
+
+        <article class="section-card">
+          <div class="card-head">
+            <h2>Expenses ({{ d.expenseTotal }})</h2>
+            @if (isOwner()) {
+              <a mat-button routerLink="/expenses/new"><mat-icon>add</mat-icon>Add expense</a>
+            }
+          </div>
+          @if (d.expenses.length) {
+            <div class="table-responsive">
+              <table class="simple-table">
+                <thead>
+                  <tr><th scope="col">Date</th><th scope="col">Title</th><th scope="col">Category</th><th scope="col" class="num">Amount</th><th scope="col">Claim</th></tr>
+                </thead>
+                <tbody>
+                  @for (expense of d.expenses; track expense.id) {
+                    <tr>
+                      <td>{{ expense.expenseDate | date: 'mediumDate' }}</td>
+                      <td>{{ expense.title }}</td>
+                      <td>{{ label(expense.category) }}</td>
+                      <td class="num">{{ expense.amount | currency: 'USD' }}</td>
+                      <td>{{ expense.claimId ? 'In claim #' + expense.claimId : '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (d.expenseTotal > d.expenses.length) {
+              <p class="hint">Showing the latest {{ d.expenses.length }} of {{ d.expenseTotal }} expenses.</p>
+            }
+          } @else {
+            <p class="muted">No expenses recorded for this trip.</p>
+          }
+        </article>
+      }
+    }
+  }
+</div>

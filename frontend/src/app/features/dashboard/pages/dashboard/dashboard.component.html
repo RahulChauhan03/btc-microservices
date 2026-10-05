@@ -1,110 +1,274 @@
 <div class="page-grid">
-  <section class="dashboard-hero">
+  <header class="page-toolbar">
     <div>
-      <span class="hero-kicker">Travel command center</span>
-      <h1>Move every trip, receipt, and claim without losing the thread.</h1>
+      <span class="page-kicker">{{ today | date: 'EEEE, d MMMM' }}</span>
+      <h1>{{ greeting() }}</h1>
+      <p class="subtitle">
+        {{ isAdmin() ? 'Here’s what’s moving across the company.' : 'Here’s where your trips, expenses and claims stand.' }}
+      </p>
     </div>
-    <div class="hero-orbit" aria-hidden="true">
-      <span></span>
-      <span></span>
-      <span></span>
+    <div class="quick-actions">
+      <a mat-stroked-button routerLink="/expenses/new"><mat-icon>add</mat-icon>Add expense</a>
+      <a mat-flat-button routerLink="/trips/new"><mat-icon>flight_takeoff</mat-icon>Plan a trip</a>
     </div>
-  </section>
+  </header>
 
-  <section class="metrics-grid">
-    <app-stat-card
-      label="Active Trips"
-      [value]="summary().activeTrips"
-      icon="flight_takeoff"
-    />
-    <app-stat-card
-      label="Pending Claims"
-      [value]="summary().pendingClaims"
-      icon="pending_actions"
-    />
-    <app-stat-card
-      label="Expense Volume"
-      [value]="summary().monthlyExpenses"
-      icon="payments"
-      format="currency"
-      tone="accent"
-    />
-    <app-stat-card
-      label="Approval Rate"
-      [value]="summary().approvalRate"
-      icon="percent"
-      format="percent"
-    />
-  </section>
-
-  <section class="dashboard-grid">
-    
-    <mat-card class="section-card scroll-card">
-      <div class="card-head">
-        <div>
-          <h2>Upcoming Trips</h2>
-          <p>Next movement across employee travel.</p>
-        </div>
-        <div class="card-actions">
-          <button mat-flat-button class="dashboard-action-button" routerLink="/trips/new" type="button">
-            <mat-icon>add</mat-icon>
-            <span>Create Trip</span>
-          </button>
-        </div>
+  @switch (state()) {
+    @case ('loading') {
+      <app-btc-loader message="Loading your dashboard…" />
+    }
+    @case ('error') {
+      <div class="section-card empty-state" role="alert">
+        <mat-icon aria-hidden="true">cloud_off</mat-icon>
+        <strong>We couldn’t load your dashboard</strong>
+        <span>Some BTC Flow services didn’t respond. Your data is safe; try again in a moment.</span>
+        <button mat-flat-button type="button" (click)="load()">Try again</button>
       </div>
+    }
+    @case ('ready') {
+      @if (data(); as d) {
+        @if (failedServices().length) {
+          <div class="auth-alert error partial-alert" role="alert">
+            <mat-icon aria-hidden="true">warning_amber</mat-icon>
+            <span>
+              Some sections couldn’t be loaded:
+              @for (message of failedServices(); track message) { <span class="failure">{{ message }}</span> }
+            </span>
+            <button mat-button type="button" (click)="load()">Retry</button>
+          </div>
+        }
+        <section class="metrics-grid" aria-label="Summary">
+          @if (isAdmin()) {
+            @if (d.claims) {
+              <app-stat-card label="Claims awaiting review" [value]="d.claims.awaitingReview" icon="pending_actions" hint="Across all employees" />
+            } @else {
+              <ng-container *ngTemplateOutlet="unavailable; context: { $implicit: 'Claims awaiting review' }" />
+            }
+            @if (d.expenses) {
+              <app-stat-card label="Company spending" [value]="d.expenses.total" icon="payments" format="currency" tone="accent"
+                [hint]="(d.expenses.from | date: 'MMM y') + ' – ' + (d.expenses.to | date: 'MMM y')" />
+            } @else {
+              <ng-container *ngTemplateOutlet="unavailable; context: { $implicit: 'Company spending' }" />
+            }
+            @if (d.trips) {
+              <app-stat-card label="Upcoming trips" [value]="d.trips.upcoming" icon="flight_takeoff" hint="Planned or in progress" />
+            } @else {
+              <ng-container *ngTemplateOutlet="unavailable; context: { $implicit: 'Upcoming trips' }" />
+            }
+            @if (d.users) {
+              <app-stat-card label="Employees" [value]="d.users.employees" icon="group"
+                [hint]="d.users.joinedLast30Days + ' joined in the last 30 days'" />
+            } @else {
+              <ng-container *ngTemplateOutlet="unavailable; context: { $implicit: 'Employees' }" />
+            }
+          } @else {
+            @if (d.trips) {
+              <app-stat-card label="Upcoming trips" [value]="d.trips.upcoming" icon="flight_takeoff" hint="Planned or in progress" />
+            } @else {
+              <ng-container *ngTemplateOutlet="unavailable; context: { $implicit: 'Upcoming trips' }" />
+            }
+            @if (d.expenses) {
+              <app-stat-card label="My spending" [value]="d.expenses.total" icon="payments" format="currency" tone="accent"
+                [hint]="d.expenses.count + ' expenses in the last 12 months'" />
+            } @else {
+              <ng-container *ngTemplateOutlet="unavailable; context: { $implicit: 'My spending' }" />
+            }
+            @if (d.claims) {
+              <app-stat-card label="Claims awaiting review" [value]="d.claims.awaitingReview" icon="pending_actions" hint="Submitted, not yet reviewed" />
+              <app-stat-card label="Approved claims" [value]="approvedCount()" icon="verified" hint="Ready for reimbursement" />
+            } @else {
+              <ng-container *ngTemplateOutlet="unavailable; context: { $implicit: 'Claims awaiting review' }" />
+              <ng-container *ngTemplateOutlet="unavailable; context: { $implicit: 'Approved claims' }" />
+            }
+          }
+        </section>
 
-      @if (topTrips().length) {
-        <div class="dashboard-list">
-          @for (trip of topTrips(); track trip.id) {
-            <article>
-              <div class="item-copy">
-                <strong>{{ trip.destination }}</strong>
-                <p>{{ trip.tripCode }}</p>
-              </div>
-              <div class="meta">
-                <span [class]="statusClass(trip.status)">{{ trip.status }}</span>
-                <span>{{ trip.startDate | date: 'mediumDate' }}</span>
-              </div>
+        <section class="dashboard-grid">
+          @if (isAdmin() && !d.pendingClaims) {
+            <article class="section-card">
+              <div class="card-head"><div><h2>Pending approvals</h2></div><a mat-button routerLink="/claims">Review claims</a></div>
+              <ng-container *ngTemplateOutlet="sectionError; context: { $implicit: failed().pendingClaims }" />
             </article>
           }
-        </div>
-      } @else {
-        <p class="empty-state">No trips are available yet.</p>
-      }
-    </mat-card>
-
-    <mat-card class="section-card scroll-card">
-      <div class="card-head">
-        <div>
-          <h2>Recent Claims</h2>
-          <p>Latest reimbursement signals.</p>
-        </div>
-        <div class="card-actions">
-          <button mat-flat-button class="dashboard-action-button" routerLink="/claims" type="button">
-            <mat-icon>fact_check</mat-icon>
-            <span>Manage Claims</span>
-          </button>
-        </div>
-      </div>
-
-      @if (latestClaims().length) {
-        <div class="dashboard-list">
-          @for (claim of latestClaims(); track claim.id) {
-            <article>
-              <div class="item-copy">
-                <strong>{{ claim.claimNumber }}</strong>
-                <p>{{ claim.claimAmount | currency: 'USD' }}</p>
+          @if (isAdmin() && d.pendingClaims) {
+            <article class="section-card">
+              <div class="card-head">
+                <div>
+                  <h2>Pending approvals</h2>
+                  <p>{{ d.pendingClaims.total }} claim{{ d.pendingClaims.total === 1 ? '' : 's' }} waiting, oldest first.</p>
+                </div>
+                <a mat-button routerLink="/claims">Review claims</a>
               </div>
-              <div class="meta">
-                <span [class]="statusClass(claim.status)">{{ claim.status }}</span>
-                <span>{{ claim.submittedAt | date: 'mediumDate' }}</span>
-              </div>
+              @if (d.pendingClaims.items.length) {
+                <ul class="item-list">
+                  @for (claim of d.pendingClaims.items; track claim.id) {
+                    <li>
+                      <span class="item-icon" aria-hidden="true"><mat-icon>description</mat-icon></span>
+                      <span class="item-copy">
+                        <strong>{{ claim.title }}</strong>
+                        <small>{{ claim.claimNumber }} · submitted {{ claim.submittedAt | date: 'mediumDate' }}</small>
+                      </span>
+                      <span class="amount">{{ claim.claimAmount | currency: 'USD' }}</span>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <div class="empty-state"><mat-icon aria-hidden="true">task_alt</mat-icon><strong>All caught up</strong><span>No claims are waiting for review.</span></div>
+              }
             </article>
           }
-        </div>
-      } @else {
-        <p class="empty-state">No claims have been submitted yet.</p>
+
+          <article class="section-card">
+            <div class="card-head">
+              <div>
+                <h2>Upcoming trips</h2>
+                <p>{{ isAdmin() ? 'Company travel, soonest first.' : 'Your planned and in-progress travel.' }}</p>
+              </div>
+              <a mat-button routerLink="/trips">View all</a>
+            </div>
+            @if (!d.upcomingTrips) {
+              <ng-container *ngTemplateOutlet="sectionError; context: { $implicit: failed().upcomingTrips }" />
+            } @else if (d.upcomingTrips.length) {
+              <ul class="item-list">
+                @for (trip of d.upcomingTrips; track trip.id) {
+                  <li>
+                    <span class="item-icon" aria-hidden="true"><mat-icon>place</mat-icon></span>
+                    <a class="item-copy item-link" [routerLink]="['/trips/view', trip.id]">
+                      <strong>{{ trip.destination }}</strong>
+                      <small>{{ trip.tripCode }} · {{ trip.startDate | date: 'mediumDate' }} – {{ trip.endDate | date: 'mediumDate' }}</small>
+                    </a>
+                    <span [class]="statusClass(trip.status)">{{ label(trip.status) }}</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <div class="empty-state">
+                <mat-icon aria-hidden="true">luggage</mat-icon>
+                <strong>No upcoming trips</strong>
+                <a mat-stroked-button routerLink="/trips/new">Plan a trip</a>
+              </div>
+            }
+          </article>
+
+          @if (isAdmin()) {
+            <article class="section-card">
+              <div class="card-head">
+                <div>
+                  <h2>Monthly spending</h2>
+                  <p>All employees, last 12 months.</p>
+                </div>
+                <a mat-button routerLink="/reports">Reports</a>
+              </div>
+              @if (d.expenses) {
+                <app-bar-list [items]="monthBars()" label="Spending by month" emptyText="No expenses in the last 12 months." />
+              } @else {
+                <ng-container *ngTemplateOutlet="sectionError; context: { $implicit: failed().expenses }" />
+              }
+            </article>
+          } @else {
+            <article class="section-card">
+              <div class="card-head">
+                <div>
+                  <h2>My claims</h2>
+                  @if (d.claims) {
+                    <p>{{ d.claims.total }} claim{{ d.claims.total === 1 ? '' : 's' }} in total.</p>
+                  }
+                </div>
+                <a mat-button routerLink="/claims">View all</a>
+              </div>
+              @if (!d.claims) {
+                <ng-container *ngTemplateOutlet="sectionError; context: { $implicit: failed().claims }" />
+              } @else if (claimStatusRows().length) {
+                <ul class="item-list">
+                  @for (row of claimStatusRows(); track row.status) {
+                    <li>
+                      <span [class]="statusClass(row.status)">{{ row.label }}</span>
+                      <span class="item-copy"><small>{{ row.count }} claim{{ row.count === 1 ? '' : 's' }}</small></span>
+                      <span class="amount">{{ row.total | currency: 'USD' }}</span>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <div class="empty-state">
+                  <mat-icon aria-hidden="true">fact_check</mat-icon>
+                  <strong>No claims yet</strong>
+                  <a mat-stroked-button routerLink="/claims/new">Submit a claim</a>
+                </div>
+              }
+            </article>
+          }
+
+          <article class="section-card">
+            <div class="card-head">
+              <div>
+                <h2>Spending by category</h2>
+                <p>{{ isAdmin() ? 'All employees' : 'Your expenses' }}, last 12 months.</p>
+              </div>
+            </div>
+            @if (d.expenses) {
+              <app-bar-list [items]="categoryBars()" label="Spending by category" emptyText="No expenses in the last 12 months." />
+            } @else {
+              <ng-container *ngTemplateOutlet="sectionError; context: { $implicit: failed().expenses }" />
+            }
+          </article>
+
+          <article class="section-card">
+            <div class="card-head">
+              <div>
+                <h2>Recent activity</h2>
+                <p>{{ isAdmin() ? 'Latest expenses and claims across the company.' : 'Your latest expenses and claims.' }}</p>
+              </div>
+            </div>
+            @if (!d.recentExpenses || !d.recentClaims) {
+              <ng-container *ngTemplateOutlet="sectionError; context: { $implicit: failed().recentClaims ?? failed().recentExpenses }" />
+            }
+            @if (activity().length) {
+              <ul class="item-list">
+                @for (item of activity(); track item.title + item.date) {
+                  <li>
+                    <span class="item-icon" aria-hidden="true"><mat-icon>{{ item.icon }}</mat-icon></span>
+                    <a class="item-copy item-link" [routerLink]="item.link">
+                      <strong>{{ item.title }}</strong>
+                      <small>{{ item.detail }}</small>
+                    </a>
+                    <time class="item-date" [attr.datetime]="item.date">{{ item.date | date: 'mediumDate' }}</time>
+                  </li>
+                }
+              </ul>
+            } @else if (d.recentExpenses && d.recentClaims) {
+              <div class="empty-state"><mat-icon aria-hidden="true">history</mat-icon><strong>Nothing yet</strong><span>New expenses and claims will appear here.</span></div>
+            }
+          </article>
+
+          @if (isAdmin() && d.users) {
+            <article class="section-card">
+              <div class="card-head">
+                <div>
+                  <h2>Team</h2>
+                  <p>{{ d.users.total }} account{{ d.users.total === 1 ? '' : 's' }} in BTC Flow.</p>
+                </div>
+                <a mat-button routerLink="/employees">Directory</a>
+              </div>
+              <ul class="item-list">
+                <li><span class="item-copy"><strong>Employees</strong></span><span class="amount">{{ d.users.employees }}</span></li>
+                <li><span class="item-copy"><strong>Administrators</strong></span><span class="amount">{{ d.users.admins }}</span></li>
+                <li><span class="item-copy"><strong>Joined in the last 30 days</strong></span><span class="amount">{{ d.users.joinedLast30Days }}</span></li>
+              </ul>
+            </article>
+          }
+        </section>
       }
-    </mat-card>
-  </section>
+    }
+  }
 </div>
+
+<ng-template #unavailable let-label>
+  <div class="stat-unavailable" role="status">
+    <p>{{ label }}</p>
+    <span><mat-icon aria-hidden="true">cloud_off</mat-icon>Unavailable</span>
+  </div>
+</ng-template>
+
+<ng-template #sectionError let-message>
+  <p class="section-error" role="status"><mat-icon aria-hidden="true">cloud_off</mat-icon>{{ message ?? 'This section couldn’t be loaded.' }}</p>
+</ng-template>

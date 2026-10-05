@@ -1,7 +1,6 @@
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -47,7 +46,6 @@ export interface DataTableFilter {
     CurrencyPipe,
     DatePipe,
     MatButtonModule,
-    MatChipsModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -67,6 +65,8 @@ export class DataTableComponent<T = any> {
   @Input() showTitle = true;
   @Input() minColumnWidth = 160;
   @Input() minTableWidth = 760;
+  @Input() emptyTitle = 'Nothing here yet';
+  @Input() emptyMessage = 'Records you have access to will appear here.';
 
   @Output() filterChange = new EventEmitter<{ key: string; value: string }>();
   @Output() cellSelectChange = new EventEmitter<{ row: T; column: DataTableColumn<T>; value: string }>();
@@ -118,6 +118,12 @@ export class DataTableComponent<T = any> {
     return `status-badge status-${value}`;
   }
 
+
+  /** Identifies a row for screen readers in action labels, e.g. "Delete T-100". */
+  rowLabel(row: T): string {
+    const first = this.columns[0];
+    return first ? String(this.resolveValue(row, first) ?? '') : '';
+  }
 
   runAction(action: DataTableAction<T>, row: T): void {
     action.handler?.(row);

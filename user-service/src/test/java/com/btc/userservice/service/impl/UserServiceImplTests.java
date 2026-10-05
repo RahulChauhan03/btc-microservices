@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.btc.userservice.audit.AuditService;
 import com.btc.userservice.dto.UserRequestDto;
 import com.btc.userservice.dto.UserResponseDto;
 import com.btc.userservice.entity.User;
@@ -27,7 +28,8 @@ class UserServiceImplTests {
     private static final CurrentUser EMPLOYEE = new CurrentUser(2L, false);
 
     private final UserRepository userRepository = mock(UserRepository.class);
-    private final UserServiceImpl userService = new UserServiceImpl(userRepository, new BCryptPasswordEncoder(4));
+    private final AuditService auditService = mock(AuditService.class);
+    private final UserServiceImpl userService = new UserServiceImpl(userRepository, new BCryptPasswordEncoder(4), auditService);
 
     @BeforeEach
     void setUp() {
@@ -36,13 +38,13 @@ class UserServiceImplTests {
 
     @Test
     void employeeCannotListCreateOrDeleteUsers() {
-        assertThatThrownBy(() -> userService.getAllUsers(EMPLOYEE, Pageable.unpaged())).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> userService.getAllUsers(EMPLOYEE, null, null, Pageable.unpaged())).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> userService.createUser(request("ADMIN"), EMPLOYEE))
                 .isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> userService.deleteUser(3L, EMPLOYEE)).isInstanceOf(AccessDeniedException.class);
 
         verify(userRepository, never()).save(any());
-        verify(userRepository, never()).delete(any());
+        verify(userRepository, never()).delete(any(User.class));
     }
 
     @Test
@@ -57,10 +59,22 @@ class UserServiceImplTests {
     void employeeCannotGrantThemselvesAdminThroughProfileUpdate() {
         when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L, "EMPLOYEE")));
 
-        UserResponseDto updated = userService.updateUser(2L, request("ADMIN"), EMPLOYEE);
+        UserRequestDto selfUpdate = request("ADMIN");
+        selfUpdate.setPassword(null);
+        UserResponseDto updated = userService.updateUser(2L, selfUpdate, EMPLOYEE);
 
         assertThat(updated.getRole()).isEqualTo("EMPLOYEE");
         assertThat(updated.getName()).isEqualTo("New Name");
+    }
+
+    @Test
+    void ownPasswordChangesMustGoThroughTheVerifiedProfileFlow() {
+        when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L, "EMPLOYEE")));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, "ADMIN")));
+
+        assertThatThrownBy(() -> userService.updateUser(2L, request(null), EMPLOYEE)).isInstanceOf(InvalidRequestException.class);
+        assertThatThrownBy(() -> userService.updateUser(1L, request("ADMIN"), ADMIN)).isInstanceOf(InvalidRequestException.class);
+        verify(userRepository, never()).save(any());
     }
 
     @Test
@@ -78,7 +92,7 @@ class UserServiceImplTests {
         assertThatThrownBy(() -> userService.updateUser(1L, request("EMPLOYEE"), ADMIN))
                 .isInstanceOf(InvalidRequestException.class);
         assertThatThrownBy(() -> userService.deleteUser(1L, ADMIN)).isInstanceOf(InvalidRequestException.class);
-        verify(userRepository, never()).delete(any());
+        verify(userRepository, never()).delete(any(User.class));
     }
 
     @Test

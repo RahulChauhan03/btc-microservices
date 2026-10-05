@@ -1,0 +1,124 @@
+<div class="page-grid">
+  <header class="page-toolbar">
+    <div>
+      <span class="page-kicker">Payments</span>
+      <h1>Reimbursements</h1>
+      <p class="muted">
+        {{ isAdmin() ? 'Record payment progress for approved claims.' : 'Payment status of your approved claims.' }}
+        BTC Flow records payments made by finance; it does not transfer money.
+      </p>
+    </div>
+    <mat-form-field appearance="outline" class="filter">
+      <mat-label>Status</mat-label>
+      <mat-select [formControl]="statusFilter">
+        <mat-option value="">All statuses</mat-option>
+        <mat-option value="PENDING">Pending</mat-option>
+        <mat-option value="PROCESSING">Processing</mat-option>
+        <mat-option value="FAILED">Failed</mat-option>
+        <mat-option value="PAID">Paid</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </header>
+
+  @if (editing(); as row) {
+    <form class="section-card update-card" [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <h2>Update reimbursement · {{ row.claimNumber }}</h2>
+      <p class="muted">Currently {{ label(row.status) }} · {{ row.amount | currency: 'USD' }}</p>
+      @if (formError()) {
+        <div class="auth-alert error" role="alert"><mat-icon aria-hidden="true">error_outline</mat-icon><span>{{ formError() }}</span></div>
+      }
+      <div class="form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>New status</mat-label>
+          <mat-select formControlName="status" required>
+            @for (next of row.allowedNext; track next) {
+              <mat-option [value]="next">{{ label(next) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        @if (form.controls.status.value === 'PAID') {
+          <mat-form-field appearance="outline">
+            <mat-label>Payment date</mat-label>
+            <input matInput type="date" formControlName="paymentDate" [max]="today" required />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Payment reference</mat-label>
+            <input matInput formControlName="paymentReference" maxlength="100" required />
+            @if (form.controls.paymentReference.hasError('pattern')) { <mat-error>Letters, digits and . _ / - only.</mat-error> }
+          </mat-form-field>
+        }
+      </div>
+      <div class="action-row">
+        <button mat-stroked-button type="button" (click)="editing.set(null)">Cancel</button>
+        <button mat-flat-button type="submit" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Save' }}</button>
+      </div>
+    </form>
+  }
+
+  <section class="section-card">
+    @switch (state()) {
+      @case ('loading') {
+        <app-btc-loader message="Loading reimbursements…" />
+      }
+      @case ('error') {
+        <div class="empty-state" role="alert">
+          <mat-icon aria-hidden="true">cloud_off</mat-icon>
+          <strong>We couldn’t load reimbursements</strong>
+          <span>{{ loadError() }}</span>
+          <button mat-flat-button type="button" (click)="load()">Try again</button>
+        </div>
+      }
+      @default {
+        @if (rows().length) {
+          <div class="table-responsive">
+            <table class="simple-table">
+              <thead>
+                <tr>
+                  <th scope="col">Claim</th>
+                  @if (isAdmin()) { <th scope="col">Employee</th> }
+                  <th scope="col" class="num">Amount</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Paid on</th>
+                  <th scope="col">Reference</th>
+                  <th scope="col">Updated</th>
+                  @if (isAdmin()) { <th scope="col"><span class="visually-hidden">Actions</span></th> }
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of rows(); track row.id) {
+                  <tr>
+                    <td><strong>{{ row.claimNumber }}</strong><br /><small class="muted">{{ row.claimTitle }}</small></td>
+                    @if (isAdmin()) { <td>#{{ row.ownerId }}</td> }
+                    <td class="num">{{ row.amount | currency: 'USD' }}</td>
+                    <td><span [class]="'status-badge status-' + row.status.toLowerCase()">{{ label(row.status) }}</span></td>
+                    <td>{{ row.paymentDate ? (row.paymentDate | date: 'mediumDate') : '—' }}</td>
+                    <td>{{ row.paymentReference ?? '—' }}</td>
+                    <td>{{ row.updatedAt | date: 'mediumDate' }}</td>
+                    @if (isAdmin()) {
+                      <td>
+                        @if (canUpdate(row)) {
+                          <button mat-stroked-button type="button" (click)="startUpdate(row)" [attr.aria-label]="'Update reimbursement ' + row.claimNumber">Update</button>
+                        }
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="pager">
+            <span>Page {{ page() + 1 }} of {{ pages() }}</span>
+            <button mat-stroked-button type="button" (click)="load(page() - 1)" [disabled]="page() === 0">Previous</button>
+            <button mat-stroked-button type="button" (click)="load(page() + 1)" [disabled]="page() + 1 >= pages()">Next</button>
+          </div>
+        } @else {
+          <div class="empty-state">
+            <mat-icon aria-hidden="true">payments</mat-icon>
+            <strong>No reimbursements</strong>
+            <span>Approved claims appear here with their payment status.</span>
+          </div>
+        }
+      }
+    }
+  </section>
+</div>

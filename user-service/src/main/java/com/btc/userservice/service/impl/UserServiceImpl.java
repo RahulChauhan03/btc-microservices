@@ -1,7 +1,9 @@
 package com.btc.userservice.service.impl;
 
+import com.btc.userservice.audit.AuditService;
 import com.btc.userservice.dto.UserRequestDto;
 import com.btc.userservice.dto.UserResponseDto;
+import com.btc.userservice.dto.UserStatsDto;
 import com.btc.userservice.entity.Role;
 import com.btc.userservice.entity.User;
 import com.btc.userservice.exception.DuplicateResourceException;
@@ -10,9 +12,12 @@ import com.btc.userservice.exception.UserNotFoundException;
 import com.btc.userservice.repository.UserRepository;
 import com.btc.userservice.security.CurrentUser;
 import com.btc.userservice.service.UserService;
+import java.time.LocalDateTime;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -29,6 +34,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService auditService;
 
     @Override
     public UserResponseDto createUser(UserRequestDto requestDto, CurrentUser actor) {
@@ -48,7 +54,10 @@ public class UserServiceImpl implements UserService {
                 .role(requestDto.getRole() == null ? Role.EMPLOYEE.name() : Role.valueOf(requestDto.getRole()).name())
                 .build();
 
-        return mapToResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        auditService.record(actor.id(), "USER_CREATED", "USER", saved.getId(),
+                "User #%d created with role %s".formatted(saved.getId(), saved.getRole()));
+        return mapToResponse(saved);
     }
 
     @Override
@@ -60,9 +69,32 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<UserResponseDto> getAllUsers(CurrentUser actor, Pageable pageable) {
+    public Page<UserResponseDto> getAllUsers(CurrentUser actor, String query, String role, Pageable pageable) {
         requireAdmin(actor);
-        return userRepository.findAll(pageable).map(this::mapToResponse);
+        Specification<User> spec = (root, criteria, cb) -> cb.conjunction();
+        if (query != null && !query.isBlank()) {
+            String like = "%" + query.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\")
+                    .replace("%", "\\%").replace("_", "\\_") + "%";
+            spec = spec.and((root, criteria, cb) -> cb.or(
+                    cb.like(cb.lower(root.get("name")), like, '\\'),
+                    cb.like(cb.lower(root.get("email")), like, '\\')));
+        }
+        if (role != null && !role.isBlank()) {
+            String normalized = role.trim().toUpperCase(Locale.ROOT);
+            if (!normalized.equals("ADMIN") && !normalized.equals("EMPLOYEE")) {
+                throw new InvalidRequestException("Role must be ADMIN or EMPLOYEE");
+            }
+            spec = spec.and((root, criteria, cb) -> cb.equal(root.get("role"), normalized));
+        }
+        return userRepository.findAll(spec, pageable).map(this::mapToResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserStatsDto getStats(CurrentUser actor) {
+        requireAdmin(actor);
+        return new UserStatsDto(userRepository.count(), userRepository.countByRole("ADMIN"),
+                userRepository.countByRole("EMPLOYEE"), userRepository.countByCreatedAtAfter(LocalDateTime.now().minusDays(30)));
     }
 
     @Override
@@ -74,11 +106,18 @@ public class UserServiceImpl implements UserService {
             throw new DuplicateResourceException("User already exists with email: " + requestDto.getEmail());
         }
 
+        String previousRole = existingUser.getRole();
         existingUser.setName(requestDto.getName());
         existingUser.setEmail(requestDto.getEmail());
         existingUser.setPhone(requestDto.getPhone());
         if (requestDto.getPassword() != null && !requestDto.getPassword().isBlank()) {
+            if (actor.owns(id)) {
+                // Own password changes must prove the current password (POST /users/me/password).
+                throw new InvalidRequestException("Change your own password in Profile & settings (your current password is required)");
+            }
             existingUser.setPasswordHash(passwordEncoder.encode(requestDto.getPassword()));
+            auditService.record(actor.id(), "USER_PASSWORD_CHANGED", "USER", id,
+                    "Password of user #%d changed by user #%d".formatted(id, actor.id()));
         }
         // Roles change only through an administrator acting on another account; a role sent by anyone else is ignored.
         if (actor.admin() && requestDto.getRole() != null) {
@@ -87,6 +126,10 @@ public class UserServiceImpl implements UserService {
                 throw new InvalidRequestException("Administrators cannot remove their own ADMIN role");
             }
             existingUser.setRole(requested.name());
+            if (!requested.name().equals(previousRole)) {
+                auditService.record(actor.id(), "USER_ROLE_CHANGED", "USER", id,
+                        "Role of user #%d changed from %s to %s".formatted(id, previousRole, requested.name()));
+            }
         }
 
         return mapToResponse(userRepository.save(existingUser));
@@ -98,7 +141,9 @@ public class UserServiceImpl implements UserService {
         if (actor.owns(id)) {
             throw new InvalidRequestException("Administrators cannot delete their own account");
         }
-        userRepository.delete(findUserById(id));
+        User user = findUserById(id);
+        userRepository.delete(user);
+        auditService.record(actor.id(), "USER_DELETED", "USER", id, "User #%d (role %s) deleted".formatted(id, user.getRole()));
     }
 
     private void requireAdmin(CurrentUser actor) {

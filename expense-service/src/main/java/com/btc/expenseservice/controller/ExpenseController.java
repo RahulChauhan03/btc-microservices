@@ -1,14 +1,18 @@
 package com.btc.expenseservice.controller;
 
+import com.btc.expenseservice.dto.ExpenseListFilter;
 import com.btc.expenseservice.dto.ExpenseRequestDto;
 import com.btc.expenseservice.dto.ExpenseResponseDto;
+import com.btc.expenseservice.dto.ExpenseSummaryDto;
 import com.btc.expenseservice.security.CurrentUser;
 import com.btc.expenseservice.service.ExpenseService;
 import com.btc.expenseservice.web.PageRequests;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -45,15 +49,30 @@ public class ExpenseController {
         return ResponseEntity.ok(expenseService.getExpenseById(id, CurrentUser.from(jwt)));
     }
 
+    /** Totals by category and month, computed in the database, for the caller's scope and a bounded period. */
+    @GetMapping("/summary")
+    public ResponseEntity<ExpenseSummaryDto> getSummary(
+            @RequestParam(required = false) Long ownerId,
+            @RequestParam(required = false) Long tripId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(expenseService.getSummary(CurrentUser.from(jwt), ownerId, tripId, from, to));
+    }
+
     @GetMapping
     public ResponseEntity<List<ExpenseResponseDto>> getAllExpenses(
             @RequestParam(required = false) Long tripId,
+            @RequestParam(required = false) Long ownerId,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = PageRequests.DEFAULT_PAGE) int page,
             @RequestParam(defaultValue = PageRequests.DEFAULT_SIZE) int size,
             @RequestParam(defaultValue = PageRequests.DEFAULT_SORT) String sort,
             @AuthenticationPrincipal Jwt jwt) {
-        return PageRequests.toResponse(expenseService.getAllExpenses(
-                CurrentUser.from(jwt), tripId, PageRequests.of(page, size, sort, SORTABLE)));
+        return PageRequests.toResponse(expenseService.getAllExpenses(CurrentUser.from(jwt),
+                new ExpenseListFilter(ownerId, tripId, category, from, to), PageRequests.of(page, size, sort, SORTABLE)));
     }
 
     @PutMapping("/{id}")

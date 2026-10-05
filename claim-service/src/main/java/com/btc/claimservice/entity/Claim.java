@@ -22,6 +22,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 @Entity
 @Table(name = "claims", indexes = @Index(name = "idx_claims_owner_id", columnList = "owner_id"))
@@ -76,8 +77,9 @@ public class Claim {
     @Column(nullable = false)
     private Long version;
 
-    /** Expense ids (expenses.id in expense-service) covered by this claim. */
+    /** Expense ids (expenses.id in expense-service) covered by this claim. Batch-loaded to avoid N+1 in lists. */
     @Builder.Default
+    @BatchSize(size = 100)
     @ElementCollection
     @CollectionTable(name = "claim_expenses",
             joinColumns = @JoinColumn(name = "claim_id"),

@@ -2,6 +2,7 @@ package com.btc.userservice.controller;
 
 import com.btc.userservice.dto.UserRequestDto;
 import com.btc.userservice.dto.UserResponseDto;
+import com.btc.userservice.dto.UserStatsDto;
 import com.btc.userservice.security.CurrentUser;
 import com.btc.userservice.service.UserService;
 import com.btc.userservice.web.PageRequests;
@@ -44,14 +45,23 @@ public class UserController {
         return ResponseEntity.ok(userService.getUserById(id, CurrentUser.from(jwt)));
     }
 
+    /** Administrators only. */
+    @GetMapping("/stats")
+    public ResponseEntity<UserStatsDto> getStats(@AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(userService.getStats(CurrentUser.from(jwt)));
+    }
+
+    /** Administrators only; q matches name or email (case-insensitive), role is ADMIN or EMPLOYEE. */
     @GetMapping
     public ResponseEntity<List<UserResponseDto>> getAllUsers(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String role,
             @RequestParam(defaultValue = PageRequests.DEFAULT_PAGE) int page,
             @RequestParam(defaultValue = PageRequests.DEFAULT_SIZE) int size,
             @RequestParam(defaultValue = PageRequests.DEFAULT_SORT) String sort,
             @AuthenticationPrincipal Jwt jwt) {
         return PageRequests.toResponse(
-                userService.getAllUsers(CurrentUser.from(jwt), PageRequests.of(page, size, sort, SORTABLE)));
+                userService.getAllUsers(CurrentUser.from(jwt), q, role, PageRequests.of(page, size, sort, SORTABLE)));
     }
 
     @PutMapping("/{id}")

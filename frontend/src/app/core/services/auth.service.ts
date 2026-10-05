@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
 import { environment } from '../../../environments/environment';
+import { inlineFeedbackRequest } from '../http/request-context';
 import { AuthResponse, AuthUser, LoginRequest } from '../models/auth.models';
 import { ApiError, ApiSuccess, runRequest } from './api-callbacks';
 
@@ -38,7 +39,7 @@ export class AuthService {
   }
 
   private loginRequest(payload: LoginRequest, rememberMe: boolean): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(this.endpoint, payload).pipe(
+    return this.http.post<AuthResponse>(this.endpoint, payload, { context: inlineFeedbackRequest() }).pipe(
       tap((response) => this.persistSession(response, rememberMe)),
     );
   }
@@ -51,6 +52,21 @@ export class AuthService {
 
     if (redirect) {
       this.router.navigate(['/login']);
+    }
+  }
+
+  /** Keeps the displayed name in step after a profile edit (the token itself is unchanged). */
+  updateCurrentUserName(name: string): void {
+    const user = this.userSignal();
+    if (!user) {
+      return;
+    }
+    const updated = { ...user, name };
+    this.userSignal.set(updated);
+    for (const storage of [localStorage, sessionStorage]) {
+      if (storage.getItem(USER_KEY)) {
+        storage.setItem(USER_KEY, JSON.stringify(updated));
+      }
     }
   }
 

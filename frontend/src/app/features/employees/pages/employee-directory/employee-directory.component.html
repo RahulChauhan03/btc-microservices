@@ -1,0 +1,74 @@
+<div class="page-grid">
+  <header class="page-toolbar">
+    <div>
+      <span class="page-kicker">Administration</span>
+      <h1>Employee directory</h1>
+    </div>
+    <a mat-stroked-button routerLink="/users"><mat-icon>manage_accounts</mat-icon>Manage accounts</a>
+  </header>
+
+  <section class="section-card table-card">
+    <div class="table-head title-hidden">
+      <div class="table-controls">
+        <mat-form-field appearance="outline" class="table-search">
+          <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+          <mat-label>Search by name or email</mat-label>
+          <input matInput type="search" [formControl]="search" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="table-filter">
+          <mat-label>Role</mat-label>
+          <mat-select [formControl]="role">
+            <mat-option value="">All roles</mat-option>
+            <mat-option value="EMPLOYEE">Employees</mat-option>
+            <mat-option value="ADMIN">Administrators</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </div>
+
+    @switch (state()) {
+      @case ('loading') {
+        <app-btc-loader message="Loading employees…" />
+      }
+      @case ('error') {
+        <div class="empty-state" role="alert">
+          <mat-icon aria-hidden="true">cloud_off</mat-icon>
+          <strong>We couldn’t load the directory</strong>
+          <button mat-flat-button type="button" (click)="load()">Try again</button>
+        </div>
+      }
+      @default {
+        @if (rows().length) {
+          <div class="table-responsive">
+            <table class="simple-table">
+              <thead>
+                <tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Joined</th></tr>
+              </thead>
+              <tbody>
+                @for (user of rows(); track user.id) {
+                  <tr>
+                    <td><a class="text-link" [routerLink]="['/employees', user.id]">{{ user.name }}</a></td>
+                    <td>{{ user.email }}</td>
+                    <td><span [class]="'status-badge status-' + user.role.toLowerCase()">{{ roleLabel(user.role) }}</span></td>
+                    <td>{{ user.createdAt | date: 'mediumDate' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="pager">
+            <span>{{ total() }} people · page {{ page() + 1 }} of {{ pages() }}</span>
+            <button mat-stroked-button type="button" (click)="load(page() - 1)" [disabled]="page() === 0">Previous</button>
+            <button mat-stroked-button type="button" (click)="load(page() + 1)" [disabled]="page() + 1 >= pages()">Next</button>
+          </div>
+        } @else {
+          <div class="empty-state">
+            <mat-icon aria-hidden="true">person_search</mat-icon>
+            <strong>No matching people</strong>
+            <span>Try a different name, email or role.</span>
+          </div>
+        }
+      }
+    }
+  </section>
+</div>

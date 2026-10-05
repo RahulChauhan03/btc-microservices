@@ -20,8 +20,8 @@ export class ConfirmationService {
         width: '420px',
         maxWidth: 'calc(100vw - 2rem)',
         data: {
-          title: 'Confirm Delete',
-          message: `Are you sure you want to delete "${value}" from the ${tableName} table?`,
+          title: `Delete ${columnName.toLowerCase()}?`,
+          message: `"${value}" will be permanently removed from ${tableName}.`,
           confirmText: 'Delete',
           cancelText: 'Cancel',
         },

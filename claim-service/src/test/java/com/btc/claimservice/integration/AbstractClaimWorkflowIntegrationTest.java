@@ -17,8 +17,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.btc.claimservice.client.ExpenseLockClient;
+import com.btc.claimservice.audit.AuditLogRepository;
 import com.btc.claimservice.client.ExpenseLockClient.ExpenseSummary;
+import com.btc.claimservice.client.ExpenseLockClient;
 import com.btc.claimservice.entity.Claim;
 import com.btc.claimservice.exception.DependencyUnavailableException;
 import com.btc.claimservice.exception.InvalidClaimStateException;
@@ -26,6 +27,7 @@ import com.btc.claimservice.outbox.OutboxEvent;
 import com.btc.claimservice.outbox.OutboxEventRepository;
 import com.btc.claimservice.outbox.OutboxEventType;
 import com.btc.claimservice.outbox.OutboxStatus;
+import com.btc.claimservice.reimbursement.ReimbursementRepository;
 import com.btc.claimservice.repository.ClaimRepository;
 import com.btc.claimservice.security.CurrentUser;
 import com.btc.claimservice.security.TestJwt;
@@ -91,8 +93,16 @@ abstract class AbstractClaimWorkflowIntegrationTest {
     @MockitoBean
     private ExpenseLockClient expenseLockClient;
 
+    @Autowired
+    private ReimbursementRepository reimbursementRepository;
+
+    @Autowired
+    private AuditLogRepository auditLogRepository;
+
     @AfterEach
     void cleanUp() {
+        reimbursementRepository.deleteAll();
+        auditLogRepository.deleteAll();
         claimRepository.deleteAll();
         outboxEventRepository.deleteAll();
         reset(expenseLockClient);
@@ -172,11 +182,14 @@ abstract class AbstractClaimWorkflowIntegrationTest {
         mockMvc.perform(delete("/claims/" + deleted).header(HttpHeaders.AUTHORIZATION, TestJwt.bearer(OWNER, "EMPLOYEE")))
                 .andExpect(status().isNoContent());
 
-        assertThat(outboxEventRepository.findAllByClaimIdOrderById(rejected))
-                .singleElement().extracting(OutboxEvent::getEventType).isEqualTo(OutboxEventType.CLAIM_REJECTED);
-        assertThat(outboxEventRepository.findAllByClaimIdOrderById(deleted))
-                .singleElement().extracting(OutboxEvent::getEventType).isEqualTo(OutboxEventType.CLAIM_DELETED);
-        assertThat(outboxEventRepository.findAllByClaimIdOrderById(approved)).isEmpty();
+        assertThat(outboxEventRepository.findAllByClaimIdOrderById(rejected)).extracting(OutboxEvent::getEventType)
+                .containsExactly(OutboxEventType.CLAIM_REJECTED, OutboxEventType.NOTIFICATION);
+        assertThat(outboxEventRepository.findAllByClaimIdOrderById(deleted)).extracting(OutboxEvent::getEventType)
+                .containsExactly(OutboxEventType.CLAIM_DELETED);
+        assertThat(outboxEventRepository.findAllByClaimIdOrderById(approved)).extracting(OutboxEvent::getEventType)
+                .as("approval keeps the locks; only the owner is notified").containsExactly(OutboxEventType.NOTIFICATION);
+        assertThat(outboxEventRepository.findAllByClaimIdOrderById(approved).get(0).getPayload())
+                .contains("\"recipientId\":" + OWNER).contains("CLAIM_APPROVED").doesNotContain("token");
         // Delivery is asynchronous (driven directly in the outbox suite); nothing is sent inside the request.
         verify(expenseLockClient, never()).releaseClaim(anyLong());
     }

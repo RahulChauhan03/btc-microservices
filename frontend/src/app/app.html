@@ -1,2 +1,4 @@
 <router-outlet />
-<app-loading-overlay />
+@if (loading.visible()) {
+  <app-btc-loader mode="overlay" [message]="loading.message()" />
+}

@@ -1,4 +1,4 @@
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,6 +22,7 @@ import {
   DataTableColumn,
   DataTableComponent,
 } from '../../../../shared/components/data-table/data-table.component';
+import { StatCardComponent } from '../../../../shared/components/stat-card/stat-card.component';
 import { DatepickerHeaderComponent } from '../../../../shared/components/datepicker-header/datepicker-header.component';
 
 @Component({
@@ -29,7 +30,6 @@ import { DatepickerHeaderComponent } from '../../../../shared/components/datepic
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    CurrencyPipe,
     MatButtonModule,
     MatCardModule,
     MatDatepickerModule,
@@ -39,6 +39,7 @@ import { DatepickerHeaderComponent } from '../../../../shared/components/datepic
     MatSelectModule,
     RouterLink,
     DataTableComponent,
+    StatCardComponent,
   ],
   templateUrl: './expense-management.component.html',
   styleUrl: './expense-management.component.css',
