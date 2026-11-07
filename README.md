@@ -2,6 +2,47 @@
 
 A backend system built using **Java, Spring Boot, and Spring Cloud Microservices Architecture**. The project demonstrates how independent services communicate, discover each other, and manage centralized configuration through a distributed system.
 
+## Application Screenshots
+
+<table>
+  <tr>
+    <td align="center"><b>Dashboard</b></td>
+    <td align="center"><b>Trip Management</b></td>
+    <td align="center"><b>Expense Management</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/01-dashboard.png" width="100%"></td>
+    <td><img src="docs/screenshots/02-trips.png" width="100%"></td>
+    <td><img src="docs/screenshots/03-expenses.png" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Claims Management</b></td>
+    <td align="center"><b>Reimbursements</b></td>
+    <td align="center"><b>Travel Policy</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/04-claims.png" width="100%"></td>
+    <td><img src="docs/screenshots/05-reimbursements.png" width="100%"></td>
+    <td><img src="docs/screenshots/06-travel-policy.png" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Employee Directory</b></td>
+    <td align="center"><b>Reports & Analytics</b></td>
+    <td align="center"><b>User Management</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/07-employees.png" width="100%"></td>
+    <td><img src="docs/screenshots/08-reports-analytics.png" width="100%"></td>
+    <td><img src="docs/screenshots/09-users.png" width="100%"></td>
+  </tr>
+</table>
+
+### Audit & Activity Tracking
+
+<p align="center">
+  <img src="docs/screenshots/10-audit-log.png" width="75%">
+</p>
+
 ## Architecture Overview
 
 - **API Gateway** – Single entry point for client requests.
